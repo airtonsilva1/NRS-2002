@@ -379,7 +379,7 @@
     <div class="panel">
       <h2>Dados do paciente</h2>
 
-      <details id="detalhesAnamnese" open>
+      <details id="detalhesAnamnese">
         <summary style="cursor:pointer;font-size:12.5px;text-transform:uppercase;letter-spacing:0.4px;color:#666;font-weight:bold;padding-bottom:6px;">📋 Anamnese</summary>
         <div class="hint" style="margin:8px 0;">Cole ou dite aqui tudo que conversar com o paciente. Depois clique em "Extrair" — a ferramenta procura por expressões como "alergia a...", "não gosta de...", "prefere..." e separa automaticamente. É reconhecimento de padrão de frase, não entendimento de verdade — funciona melhor com frases diretas, e sempre precisa de conferência sua.</div>
         <textarea id="anamneseTexto" placeholder="ex: paciente relata alergia a camarão, não gosta de berinjela, prefere frango grelhado, evita frituras..." style="min-height:100px;"></textarea>
@@ -411,7 +411,7 @@
 
       <div class="divider"></div>
 
-      <details id="detalhesPacientes" open>
+      <details id="detalhesPacientes">
         <summary style="cursor:pointer;font-size:12.5px;text-transform:uppercase;letter-spacing:0.4px;color:#666;font-weight:bold;padding-bottom:6px;">Pacientes salvos (por leito + data)</summary>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
           <button type="button" class="mini-btn" id="salvarPacienteBtn">💾 Salvar paciente atual</button>
@@ -535,7 +535,7 @@
 
         <div class="hint" id="skZscoreHint" style="margin-bottom:8px;"></div>
 
-        <div class="hint" style="margin-bottom:8px;">Peso/Idade e Altura/Idade são calculados automaticamente (tabelas oficiais OMS) para até 5 anos completos. Peso/Altura e IMC/Idade ainda não têm tabela embutida nesta ferramenta — preencha manualmente com o valor já consultado na curva/software de referência.</div>
+        <div class="hint" style="margin-bottom:8px;">Peso/Idade e Altura/Idade são calculados automaticamente (tabelas oficiais OMS) para até 5 anos completos. IMC/Idade também é automático, mas só dos 2 aos 5 anos (24-60 meses) — abaixo de 2 anos ainda não tenho a tabela oficial embutida. Peso/Altura continua manual.</div>
 
         <label class="first">Peso/Idade</label>
         <select id="skPesoIdade">
@@ -645,6 +645,69 @@
         <option value="temperatura ambiente">Temperatura ambiente</option>
         <option value="quente">Quente</option>
       </select>
+
+      <div id="secaoFormulaAdmEnteral" style="display:none;">
+        <label>Fórmula enteral</label>
+        <select id="admFormulaEnteral"></select>
+        <input type="text" id="admFormulaEnteralOutra" placeholder="nome da fórmula, se selecionou 'Outra'" style="display:none;margin-top:6px;">
+        <div class="hint" id="admTipoFormulaHint"></div>
+
+        <div class="row">
+          <div>
+            <label class="first">Volume (ml)</label>
+            <input type="number" id="admVolume" placeholder="ex: 800">
+          </div>
+          <div>
+            <label class="first">Taxa (ml/h)</label>
+            <input type="number" id="admTaxa" placeholder="ex: 37">
+          </div>
+        </div>
+        <div class="hint">Kcal e proteína são calculados automaticamente pelo volume × concentração da fórmula — pode editar se preferir.</div>
+        <div class="row">
+          <div>
+            <label>Kcal da fórmula</label>
+            <input type="number" id="admKcalFormula" step="0.1" placeholder="ex: 800">
+          </div>
+          <div>
+            <label>Proteína da fórmula (g)</label>
+            <input type="number" id="admPtnFormula" step="0.1" placeholder="ex: 30.4">
+          </div>
+        </div>
+      </div>
+      <label>Fibras (g) <span style="font-weight:normal;color:#888;">— só calculado automaticamente se a fórmula tiver dado confirmado</span></label>
+      <input type="number" id="admFibraFormula" step="0.1" placeholder="opcional">
+
+      <div id="secaoFormulaAdmParenteral" style="display:none;">
+        <label>Bolsa parenteral</label>
+        <select id="admFormulaParenteral"></select>
+        <input type="text" id="admFormulaParenteralOutra" placeholder="nome da bolsa, se selecionou 'Outra'" style="display:none;margin-top:6px;">
+
+        <div class="row">
+          <div>
+            <label class="first">Volume (ml)</label>
+            <input type="number" id="admVolumeParenteral" placeholder="ex: 1500">
+          </div>
+          <div>
+            <label class="first">Taxa (ml/h)</label>
+            <input type="number" id="admTaxaParenteral" placeholder="ex: 63">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Kcal da bolsa</label>
+            <input type="number" id="admKcalParenteral" step="0.1" placeholder="ex: 1605">
+          </div>
+          <div>
+            <label>Proteína da bolsa (g)</label>
+            <input type="number" id="admPtnParenteral" step="0.1" placeholder="ex: 85.43">
+          </div>
+        </div>
+      </div>
+
+      <div id="secaoVetEmtnAdm" style="display:none;">
+        <label>VET proposto pela EMTN (kcal)</label>
+        <input type="number" id="admVetEmtn" step="0.1" placeholder="ex: 1532.7">
+      </div>
       </div>
 
       <div id="secaoPerfilCalorico">
@@ -789,6 +852,15 @@
         <input type="text" id="tneAceitacaoOral" placeholder="ex: boa aceitação, aceita cerca de 50% da dieta ofertada...">
       </div>
 
+      <div class="nrs-q">
+        <span>Em desmame / associado a outra via nutricional (parenteral + enteral simultâneos)?</span>
+        <div class="seg mini" id="segTneDesmame"><button data-val="nao" class="active">Não</button><button data-val="sim">Sim</button></div>
+      </div>
+      <div id="secaoTneDesmameCampos" style="display:none;">
+        <label class="first">Detalhes da outra via nutricional</label>
+        <textarea id="tneDesmameDetalhe" placeholder="ex: SmofKabiven 1000 ml, 42 ml/h, 1300 kcal e 60 g ptn, via central"></textarea>
+      </div>
+
       <div class="row">
         <div>
           <label class="first">Via de acesso</label>
@@ -801,8 +873,8 @@
               <option value="Jejunostomia">Jejunostomia</option>
             </optgroup>
             <optgroup label="Parenteral">
-              <option value="Via Central">Via Central (CVC/PICC)</option>
-              <option value="Via Periférica">Via Periférica</option>
+              <option value="central">Via Central (CVC/PICC)</option>
+              <option value="periferica">Via Periférica</option>
             </optgroup>
             <option value="Outra">Outra</option>
           </select>
@@ -819,43 +891,14 @@
 
       <div id="secaoFormulaEnteral">
         <label>Fórmula enteral</label>
-        <select id="tneFormulaEnteral">
-          <option value="fresubin_original">Fresubin Original</option>
-          <option value="fresubin_energy">Fresubin Energy</option>
-          <option value="fresubin_hp_energy">Fresubin HP Energy</option>
-          <option value="fresubin_1_2_hp_fibre">Fresubin 1.2 HP Fibre</option>
-          <option value="fresubin_2kcal_hp">Fresubin 2kcal HP</option>
-          <option value="diben">Diben</option>
-          <option value="nutrison">Nutrison</option>
-          <option value="nutrison_energy">Nutrison Energy 1.5</option>
-          <option value="nutrison_protein_plus">Nutrison Protein Plus Multi Fiber</option>
-          <option value="nutrison_protein_plus_energy">Nutrison Protein Plus Energy</option>
-          <option value="nutrison_advanced_cubison">Nutrison Advanced Cubison</option>
-          <option value="isosource_1_0">Isosource 1.0</option>
-          <option value="isosource_soya_fiber">Isosource Soya Fiber</option>
-          <option value="peptamen">Peptamen</option>
-          <option value="peptamen_hn">Peptamen HN</option>
-          <option value="novasource_gc">Novasource GC</option>
-          <option value="novasource_senior">Novasource Senior</option>
-          <option value="outra_enteral">Outra (especificar abaixo)</option>
-        </select>
+        <select id="tneFormulaEnteral"></select>
         <input type="text" id="tneFormulaEnteralOutra" placeholder="nome da fórmula, se selecionou 'Outra'" style="display:none;margin-top:6px;">
         <div class="hint" id="tneTipoFormulaHint"></div>
       </div>
 
       <div id="secaoFormulaParenteral" style="display:none;">
         <label>Bolsa parenteral</label>
-        <select id="tneFormulaParenteral">
-          <option value="kabiven">Kabiven</option>
-          <option value="kabiven_peripheral">Kabiven Peripheral</option>
-          <option value="smofkabiven">SmofKabiven</option>
-          <option value="smofkabiven_peripheral">SmofKabiven Peripheral</option>
-          <option value="oliclinomel">Oliclinomel</option>
-          <option value="olimel">Olimel</option>
-          <option value="nutriflex_lipid_plus">NutriFlex Lipid Plus</option>
-          <option value="nutriflex_lipid_special">NutriFlex Lipid Special</option>
-          <option value="outra_parenteral">Outra (especificar abaixo)</option>
-        </select>
+        <select id="tneFormulaParenteral"></select>
         <input type="text" id="tneFormulaParenteralOutra" placeholder="nome da bolsa, se selecionou 'Outra'" style="display:none;margin-top:6px;">
       </div>
 
@@ -870,6 +913,7 @@
         </div>
       </div>
 
+      <div class="hint">Kcal e proteína são calculados automaticamente pelo volume × concentração da fórmula — pode editar se preferir.</div>
       <div class="row">
         <div>
           <label>Kcal da fórmula (kcal)</label>
@@ -880,6 +924,9 @@
           <input type="number" id="tnePtnFormula" step="0.1" placeholder="ex: 30.4">
         </div>
       </div>
+      <label>Fibras (g) <span style="font-weight:normal;color:#888;">— só calculado automaticamente se a fórmula tiver dado confirmado</span></label>
+      <input type="number" id="tneFibraFormula" step="0.1" placeholder="opcional">
+      <div class="hint" id="tneOverfeedingHint"></div>
 
       <label>VET proposto pela EMTN (kcal) <span style="font-weight:normal;color:#888;">— se vazio, usa o VET calculado</span></label>
       <input type="number" id="tneVetEmtn" step="0.1" placeholder="ex: 1532.7">
@@ -1004,6 +1051,7 @@ setupSeg('segSexo'); setupSeg('segTipoNota'); setupSeg('segNrsEstado'); setupSeg
 setupSeg('segQPerda'); setupSeg('segQIngestao'); setupSeg('segQGrave');
 setupSeg('segSkQ1'); setupSeg('segSkQ2'); setupSeg('segSkQ3'); setupSeg('segSkQ4');
 setupSeg('segTneVO');
+setupSeg('segTneDesmame');
 function segVal(id){ return document.querySelector('#'+id+' button.active').dataset.val; }
 
 /* ---------- perfis clínicos: kcal/kg e ptn/kg padrão ---------- */
@@ -1425,6 +1473,86 @@ const HFA_GIRLS = [
 [1.0,109.4233,0.04347]
 ];
 
+const BFA_BOYS_24_60 = {
+24:[-0.6187,16.0189,0.07785],
+25:[-0.584,15.98,0.07792],
+26:[-0.5497,15.9414,0.078],
+27:[-0.5166,15.9036,0.07808],
+28:[-0.485,15.8667,0.07818],
+29:[-0.4552,15.8306,0.07829],
+30:[-0.4274,15.7953,0.07841],
+31:[-0.4016,15.7606,0.07854],
+32:[-0.3782,15.7267,0.07867],
+33:[-0.3572,15.6934,0.07882],
+34:[-0.3388,15.661,0.07897],
+35:[-0.3231,15.6294,0.07914],
+36:[-0.3101,15.5988,0.07931],
+37:[-0.3,15.5693,0.0795],
+38:[-0.2927,15.541,0.07969],
+39:[-0.2884,15.514,0.0799],
+40:[-0.2869,15.4885,0.08012],
+41:[-0.2881,15.4645,0.08036],
+42:[-0.2919,15.442,0.08061],
+43:[-0.2981,15.421,0.08087],
+44:[-0.3067,15.4013,0.08115],
+45:[-0.3174,15.3827,0.08144],
+46:[-0.3303,15.3652,0.08174],
+47:[-0.3452,15.3485,0.08205],
+48:[-0.3622,15.3326,0.08238],
+49:[-0.3811,15.3174,0.08272],
+50:[-0.4019,15.3029,0.08307],
+51:[-0.4245,15.2891,0.08343],
+52:[-0.4488,15.2759,0.0838],
+53:[-0.4747,15.2633,0.08418],
+54:[-0.5019,15.2514,0.08457],
+55:[-0.5303,15.24,0.08496],
+56:[-0.5599,15.2291,0.08536],
+57:[-0.5905,15.2188,0.08577],
+58:[-0.6223,15.2091,0.08617],
+59:[-0.6552,15.2,0.08659],
+60:[-0.6892,15.1916,0.087]
+};
+
+const BFA_GIRLS_24_60 = {
+24:[-0.5684,15.6881,0.08454],
+25:[-0.5684,15.659,0.08452],
+26:[-0.5684,15.6308,0.08449],
+27:[-0.5684,15.6037,0.08446],
+28:[-0.5684,15.5777,0.08444],
+29:[-0.5684,15.5523,0.08443],
+30:[-0.5684,15.5276,0.08444],
+31:[-0.5684,15.5034,0.08448],
+32:[-0.5684,15.4798,0.08455],
+33:[-0.5684,15.4572,0.08467],
+34:[-0.5684,15.4356,0.08484],
+35:[-0.5684,15.4155,0.08506],
+36:[-0.5684,15.3968,0.08535],
+37:[-0.5684,15.3796,0.08569],
+38:[-0.5684,15.3638,0.08609],
+39:[-0.5684,15.3493,0.08654],
+40:[-0.5684,15.3358,0.08704],
+41:[-0.5684,15.3233,0.08757],
+42:[-0.5684,15.3116,0.08813],
+43:[-0.5684,15.3007,0.08872],
+44:[-0.5684,15.2905,0.08931],
+45:[-0.5684,15.2814,0.08991],
+46:[-0.5684,15.2732,0.09051],
+47:[-0.5684,15.2661,0.0911],
+48:[-0.5684,15.2602,0.09168],
+49:[-0.5684,15.2556,0.09227],
+50:[-0.5684,15.2523,0.09286],
+51:[-0.5684,15.2503,0.09345],
+52:[-0.5684,15.2496,0.09403],
+53:[-0.5684,15.2502,0.0946],
+54:[-0.5684,15.2519,0.09515],
+55:[-0.5684,15.2544,0.09568],
+56:[-0.5684,15.2575,0.09618],
+57:[-0.5684,15.2612,0.09665],
+58:[-0.5684,15.2653,0.09709],
+59:[-0.5684,15.2698,0.0975],
+60:[-0.5684,15.2747,0.09789]
+};
+
 function zscoreLMS(x, L, M, S){
   if(Math.abs(L) < 1e-9) return Math.log(x/M)/S;
   return (Math.pow(x/M, L) - 1)/(L*S);
@@ -1455,6 +1583,15 @@ function idadeEmMeses(){
   return (!isNaN(anos)) ? anos*12 : null;
 }
 
+function classificarZImc(z){
+  if(z>=2) return "+2 DP (Obesidade)";
+  if(z>=1) return "+1 DP (Adequado/Média)";
+  if(z>=-1) return "Média (0 DP)";
+  if(z>=-2) return "-1 DP";
+  if(z>=-3) return "-2 DP (Desnutrição)";
+  return "-3 DP (Desnutrição severa)";
+}
+
 function calcularZPediatrico(){
   const meses = idadeEmMeses();
   const peso = parseFloat(document.getElementById('peso').value);
@@ -1471,13 +1608,26 @@ function calcularZPediatrico(){
   const zPeso = zscoreLMS(peso, Lp, Mp, Sp);
   const zAltura = zscoreLMS(altura, La, Ma, Sa);
 
-  return {
+  const resultado = {
     zPeso: Math.round(zPeso*100)/100,
     zAltura: Math.round(zAltura*100)/100,
     classePeso: classificarZPeso(zPeso),
     classeAltura: classificarZAltura(zAltura),
+    zImc: null, classeImc: null,
     meses: mesesArred
   };
+
+  // IMC/Idade — só temos tabela OMS verificada para 24-60 meses (2 a 5 anos)
+  if(mesesArred>=24 && mesesArred<=60){
+    const tabelaImc = sexo==='M' ? BFA_BOYS_24_60 : BFA_GIRLS_24_60;
+    const [Li,Mi,Si] = tabelaImc[mesesArred];
+    const imcCalc = peso/((altura/100)*(altura/100));
+    const zImc = zscoreLMS(imcCalc, Li, Mi, Si);
+    resultado.zImc = Math.round(zImc*100)/100;
+    resultado.classeImc = classificarZImc(zImc);
+  }
+
+  return resultado;
 }
 
 const ANDARES_FECHADOS = ['1','4','5'];
@@ -1512,9 +1662,29 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoHoraLiberacao').style.display = isEvolucaoDieta ? '' : 'none';
   document.getElementById('secaoTNE').style.display = isTNE ? '' : 'none';
   document.getElementById('secaoTneVOCampos').style.display = (isTNE && segVal('segTneVO')==='sim') ? '' : 'none';
+  document.getElementById('secaoTneDesmameCampos').style.display = (isTNE && segVal('segTneDesmame')==='sim') ? '' : 'none';
   document.getElementById('secaoDietaPrincipal').style.display = isTNE ? 'none' : '';
   document.getElementById('secaoPerfilCalorico').style.display = isTNE ? 'none' : '';
   document.getElementById('secaoTempoInternacao').style.display = isTNE ? 'none' : '';
+
+  if(!isTNE){
+    const dietaVal = document.getElementById('dieta').value;
+    document.getElementById('secaoFormulaAdmEnteral').style.display = (dietaVal==='enteral') ? '' : 'none';
+    document.getElementById('secaoFormulaAdmParenteral').style.display = (dietaVal==='parenteral') ? '' : 'none';
+    document.getElementById('secaoVetEmtnAdm').style.display = (dietaVal==='enteral' || dietaVal==='parenteral') ? '' : 'none';
+
+    if(dietaVal==='enteral'){
+      const fEntAdm = document.getElementById('admFormulaEnteral').value;
+      document.getElementById('admFormulaEnteralOutra').style.display = (fEntAdm==='outra_enteral') ? '' : 'none';
+      const hintAdm = document.getElementById('admTipoFormulaHint');
+      hintAdm.textContent = FORMULAS_ENTERAIS[fEntAdm] ? `Tipo detectado: ${FORMULAS_ENTERAIS[fEntAdm].tipo}` : '';
+      autoCalcularEnteral('admFormulaEnteral','admVolume','admKcalFormula','admPtnFormula','admFibraFormula');
+    }
+    if(dietaVal==='parenteral'){
+      const fParAdm = document.getElementById('admFormulaParenteral').value;
+      document.getElementById('admFormulaParenteralOutra').style.display = (fParAdm==='outra_parenteral') ? '' : 'none';
+    }
+  }
 
   if(isTNE){
     const viaParenteral = VIAS_PARENTERAIS.includes(document.getElementById('tneVia').value);
@@ -1530,6 +1700,7 @@ function atualizarVisibilidadePorTipo(){
     const hint = document.getElementById('tneTipoFormulaHint');
     if(!viaParenteral && FORMULAS_ENTERAIS[fEnt]){
       hint.textContent = `Tipo detectado: ${FORMULAS_ENTERAIS[fEnt].tipo}`;
+      autoCalcularEnteral('tneFormulaEnteral','tneVolumePrescrito','tneKcalFormula','tnePtnFormula','tneFibraFormula');
     } else if(viaParenteral && FORMULAS_PARENTERAIS[fPar]){
       hint.textContent = `Tipo detectado: ${FORMULAS_PARENTERAIS[fPar].tipo}`;
     } else {
@@ -1546,7 +1717,15 @@ function recalc(){
   const percHintTNE = document.getElementById('tnePercInfusaoHint');
   if(volPrescrito && volInfundido){
     const perc = Math.round((volInfundido/volPrescrito)*100);
-    percHintTNE.textContent = `${perc}% de infusão em relação ao volume prescrito.`;
+    if(perc > 100){
+      percHintTNE.innerHTML = `⚠️ ${perc}% de infusão — volume infundido é maior que o prescrito. Confira se os valores estão corretos.`;
+      percHintTNE.style.color = '#9c3b32';
+      percHintTNE.style.fontWeight = 'bold';
+    } else {
+      percHintTNE.textContent = `${perc}% de infusão em relação ao volume prescrito.`;
+      percHintTNE.style.color = '';
+      percHintTNE.style.fontWeight = '';
+    }
   } else {
     percHintTNE.textContent = '';
   }
@@ -1578,7 +1757,13 @@ function recalc(){
     if(zRes){
       document.getElementById('skPesoIdade').value = zRes.classePeso;
       document.getElementById('skAlturaIdade').value = zRes.classeAltura;
-      hint.textContent = `Calculado automaticamente (${zRes.meses} meses): Peso/Idade Z=${zRes.zPeso} (${zRes.classePeso}) · Altura/Idade Z=${zRes.zAltura} (${zRes.classeAltura}). Confira e ajuste manualmente se necessário.`;
+      let msg = `Calculado automaticamente (${zRes.meses} meses): Peso/Idade Z=${zRes.zPeso} (${zRes.classePeso}) · Altura/Idade Z=${zRes.zAltura} (${zRes.classeAltura})`;
+      if(zRes.zImc!==null){
+        document.getElementById('skImcIdade').value = zRes.classeImc;
+        msg += ` · IMC/Idade Z=${zRes.zImc} (${zRes.classeImc})`;
+      }
+      msg += `. Confira e ajuste manualmente se necessário.`;
+      hint.textContent = msg;
       hint.style.color = '#3c8f4a';
     } else {
       hint.textContent = 'Cálculo automático indisponível (idade acima de 5 anos, ou peso/altura/idade ainda não preenchidos) — selecione manualmente abaixo.';
@@ -1591,6 +1776,8 @@ function recalc(){
     document.getElementById('skImcMini').textContent = '—';
     document.getElementById('qImcAuto').textContent = 'Não';
     box.innerHTML = '<div class="hint">Preencha peso e altura para ver os cálculos.</div>';
+    const tneOverElVazio = document.getElementById('tneOverfeedingHint');
+    if(tneOverElVazio) tneOverElVazio.textContent = '';
     renderItensBloqueio();
     return null;
   }
@@ -1650,11 +1837,32 @@ function recalc(){
     <div class="calc-row"><span>Próx. Evolução (+${dias}d, nível ${label})</span><span style="font-size:14px">${formatDate(proxEvolucao)}</span></div>
     <div class="calc-row"><span>Próx. Reavaliação ${menor?'StrongKids':'NRS'} (+${diasReaval}d)</span><span style="font-size:14px">${formatDate(proxReavaliacao)}</span></div>
   `;
+  const tneKcalEl = document.getElementById('tneKcalFormula');
+  const tneOverEl = document.getElementById('tneOverfeedingHint');
+  if(tneKcalEl && tneOverEl){
+    const kcalEntregue = parseFloat(tneKcalEl.value);
+    if(kcalEntregue && vet){
+      const percNecessidade = Math.round((kcalEntregue/vet)*100);
+      if(percNecessidade > 110){
+        tneOverEl.innerHTML = `⚠️ Possível <b>overfeeding</b>: ${kcalEntregue} kcal entregues = ${percNecessidade}% da necessidade calculada (${vet} kcal).`;
+        tneOverEl.style.color = '#9c3b32'; tneOverEl.style.fontWeight = 'bold';
+      } else if(percNecessidade < 80){
+        tneOverEl.innerHTML = `⚠️ Possível <b>underfeeding</b>: ${kcalEntregue} kcal entregues = ${percNecessidade}% da necessidade calculada (${vet} kcal).`;
+        tneOverEl.style.color = '#9c3b32'; tneOverEl.style.fontWeight = 'bold';
+      } else {
+        tneOverEl.innerHTML = `✓ ${kcalEntregue} kcal entregues = ${percNecessidade}% da necessidade calculada (${vet} kcal) — dentro da meta.`;
+        tneOverEl.style.color = '#3c8f4a'; tneOverEl.style.fontWeight = '';
+      }
+    } else {
+      tneOverEl.textContent = '';
+    }
+  }
+
   renderItensBloqueio();
   return {imc, classificacao, vet, ptn, prox: proxEvolucao, proxEvolucao, proxReavaliacao, perfil, nivel, pesoIdeal};
 }
-['peso','altura','idade','pesoAnterior','tneVolumePrescrito','tneVolumeInfundido'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
-['tneVia','tneFormulaEnteral','tneFormulaParenteral'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
+['peso','altura','idade','pesoAnterior','tneVolumePrescrito','tneVolumeInfundido','admVolume'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
+['tneVia','tneFormulaEnteral','tneFormulaParenteral','admFormulaEnteral','admFormulaParenteral'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
 
 /* ---------- andar automático pelo número do leito ----------
    Premissa (a confirmar/ajustar se necessário): o 1º dígito do leito
@@ -1727,35 +1935,121 @@ const RESTRICOES_SEM_TEXTO = {
 };
 /* Fórmulas comuns (mercado brasileiro) e sua classificação — baseado em bula/ficha técnica dos fabricantes */
 const FORMULAS_ENTERAIS = {
-  fresubin_original: {nome:"Fresubin Original", tipo:"polimérica, normocalórica e normoproteica"},
-  fresubin_energy: {nome:"Fresubin Energy", tipo:"polimérica e hipercalórica (1,5 kcal/ml)"},
-  fresubin_hp_energy: {nome:"Fresubin HP Energy", tipo:"polimérica, hipercalórica e hiperproteica"},
-  fresubin_1_2_hp_fibre: {nome:"Fresubin 1.2 HP Fibre", tipo:"polimérica, normocalórica, hiperproteica e com fibras"},
-  fresubin_2kcal_hp: {nome:"Fresubin 2kcal HP", tipo:"polimérica, hipercalórica (2,0 kcal/ml) e hiperproteica"},
-  diben: {nome:"Diben", tipo:"polimérica, hipercalórica e específica para controle glicêmico"},
-  nutrison: {nome:"Nutrison", tipo:"polimérica, normocalórica e normoproteica"},
-  nutrison_energy: {nome:"Nutrison Energy 1.5", tipo:"polimérica e hipercalórica (1,5 kcal/ml)"},
-  nutrison_protein_plus: {nome:"Nutrison Protein Plus Multi Fiber", tipo:"polimérica, hiperproteica e com fibras"},
-  nutrison_protein_plus_energy: {nome:"Nutrison Protein Plus Energy", tipo:"polimérica, hipercalórica e hiperproteica"},
-  nutrison_advanced_cubison: {nome:"Nutrison Advanced Cubison", tipo:"polimérica, específica para controle glicêmico e cicatrização"},
-  isosource_1_0: {nome:"Isosource 1.0", tipo:"polimérica, normocalórica e normoproteica"},
-  isosource_soya_fiber: {nome:"Isosource Soya Fiber", tipo:"polimérica, normocalórica e com fibras"},
-  peptamen: {nome:"Peptamen", tipo:"oligomérica/semi-elementar (à base de peptídeos)"},
-  peptamen_hn: {nome:"Peptamen HN", tipo:"oligomérica, hipercalórica e hiperproteica"},
-  novasource_gc: {nome:"Novasource GC", tipo:"polimérica, específica para controle glicêmico"},
-  novasource_senior: {nome:"Novasource Senior", tipo:"polimérica e hiperproteica"},
+  fresubin_original: {nome:"Fresubin Original", tipo:"polimérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.038},
+  fresubin_energy: {nome:"Fresubin Energy", tipo:"polimérica e hipercalórica (1,5 kcal/ml)", kcalMl:1.5, ptnMl:0.056},
+  fresubin_hp_energy: {nome:"Fresubin HP Energy", tipo:"polimérica, hipercalórica e hiperproteica", kcalMl:1.5, ptnMl:0.075},
+  fresubin_1_2_hp_fibre: {nome:"Fresubin 1.2 HP Fibre", tipo:"polimérica, normocalórica, hiperproteica e com fibras", kcalMl:1.2, ptnMl:0.06, fibraMl:0.02},
+  fresubin_2kcal_hp: {nome:"Fresubin 2kcal HP", tipo:"polimérica, hipercalórica (2,0 kcal/ml) e hiperproteica", kcalMl:2.0, ptnMl:0.1},
+  diben: {nome:"Diben", tipo:"polimérica e normocalórica", kcalMl:1.0, ptnMl:0.0425},
+  nutrison: {nome:"Nutrison", tipo:"polimérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.04},
+  nutrison_energy: {nome:"Nutrison Energy 1.5", tipo:"polimérica e hipercalórica (1,5 kcal/ml)", kcalMl:1.5, ptnMl:0.06},
+  nutrison_protein_plus: {nome:"Nutrison Protein Plus Multi Fiber", tipo:"polimérica, hiperproteica e com fibras", kcalMl:1.2, ptnMl:0.06},
+  nutrison_protein_plus_energy: {nome:"Nutrison Protein Plus Energy", tipo:"polimérica, hipercalórica e hiperproteica", kcalMl:1.5, ptnMl:0.075},
+  nutrison_advanced_cubison: {nome:"Nutrison Advanced Cubison", tipo:"polimérica e hipercalórica", kcalMl:1.5, ptnMl:0.075},
+  isosource_1_0: {nome:"Isosource 1.0", tipo:"polimérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.037},
+  isosource_soya_fiber: {nome:"Isosource Soya Fiber", tipo:"polimérica, normocalórica e com fibras", kcalMl:1.2, ptnMl:0.044},
+  peptamen: {nome:"Peptamen", tipo:"oligomérica/semi-elementar", kcalMl:1.0, ptnMl:0.04},
+  peptamen_hn: {nome:"Peptamen HN", tipo:"oligomérica, hipercalórica e hiperproteica", kcalMl:1.3, ptnMl:0.065},
+  novasource_gc: {nome:"Novasource GC", tipo:"polimérica e normocalórica", kcalMl:1.1, ptnMl:0.045},
+  novasource_senior: {nome:"Novasource Senior", tipo:"polimérica, normocalórica e hiperproteica", kcalMl:1.2, ptnMl:0.06},
 };
 const FORMULAS_PARENTERAIS = {
-  kabiven: {nome:"Kabiven", tipo:"nutrição parenteral 3-em-1 (glicose, aminoácidos e lipídios), via central"},
-  kabiven_peripheral: {nome:"Kabiven Peripheral", tipo:"nutrição parenteral 3-em-1, via periférica"},
-  smofkabiven: {nome:"SmofKabiven", tipo:"nutrição parenteral 3-em-1 com lipídeos SMOF (óleo de peixe), via central"},
-  smofkabiven_peripheral: {nome:"SmofKabiven Peripheral", tipo:"nutrição parenteral 3-em-1 com lipídeos SMOF, via periférica"},
-  oliclinomel: {nome:"Oliclinomel", tipo:"nutrição parenteral 3-em-1 à base de azeite de oliva"},
-  olimel: {nome:"Olimel", tipo:"nutrição parenteral 3-em-1 à base de azeite de oliva"},
+  kabiven: {nome:"Kabiven", tipo:"nutrição parenteral 3-em-1"},
+  kabiven_peripheral: {nome:"Kabiven Peripheral", tipo:"nutrição parenteral 3-em-1"},
+  smofkabiven: {nome:"SmofKabiven", tipo:"nutrição parenteral 3-em-1"},
+  smofkabiven_peripheral: {nome:"SmofKabiven Peripheral", tipo:"nutrição parenteral 3-em-1"},
+  oliclinomel: {nome:"Oliclinomel", tipo:"nutrição parenteral 3-em-1"},
+  olimel: {nome:"Olimel", tipo:"nutrição parenteral 3-em-1"},
   nutriflex_lipid_plus: {nome:"NutriFlex Lipid Plus", tipo:"nutrição parenteral 3-em-1"},
   nutriflex_lipid_special: {nome:"NutriFlex Lipid Special", tipo:"nutrição parenteral 3-em-1, com maior concentração de aminoácidos"},
 };
-const VIAS_PARENTERAIS = ['Via Central', 'Via Periférica'];
+const VIAS_PARENTERAIS = ['central', 'periferica'];
+const VIA_PARENTERAL_TXT = {central:'central', periferica:'periférica'};
+
+function totalFormulaTexto(dados){
+  if(!dados || !dados.kcalMl) return '';
+  const kcalL = Math.round(dados.kcalMl*1000);
+  const ptnL = Math.round(dados.ptnMl*1000*10)/10;
+  return `${kcalL} kcal e ${ptnL}g ptn por litro`;
+}
+
+function autoCalcularEnteral(selId, volId, kcalId, ptnId, fibraId){
+  const fVal = document.getElementById(selId).value;
+  const vol = parseFloat(document.getElementById(volId).value);
+  const dados = FORMULAS_ENTERAIS[fVal];
+  if(dados && dados.kcalMl && vol){
+    document.getElementById(kcalId).value = Math.round(dados.kcalMl*vol*10)/10;
+    document.getElementById(ptnId).value = Math.round(dados.ptnMl*vol*10)/10;
+    if(fibraId && document.getElementById(fibraId)){
+      document.getElementById(fibraId).value = dados.fibraMl ? Math.round(dados.fibraMl*vol*10)/10 : '';
+    }
+  }
+}
+
+function popularSelectFormulas(id, mapa, valorOutra){
+  const sel = document.getElementById(id);
+  Object.entries(mapa).forEach(([key,val])=>{
+    const o = document.createElement('option');
+    o.value = key; o.textContent = val.nome;
+    sel.appendChild(o);
+  });
+  const oOutra = document.createElement('option');
+  oOutra.value = valorOutra;
+  oOutra.textContent = 'Outra (especificar abaixo)';
+  sel.appendChild(oOutra);
+}
+popularSelectFormulas('tneFormulaEnteral', FORMULAS_ENTERAIS, 'outra_enteral');
+popularSelectFormulas('tneFormulaParenteral', FORMULAS_PARENTERAIS, 'outra_parenteral');
+popularSelectFormulas('admFormulaEnteral', FORMULAS_ENTERAIS, 'outra_enteral');
+popularSelectFormulas('admFormulaParenteral', FORMULAS_PARENTERAIS, 'outra_parenteral');
+
+function descreverFormulaEnteralAdm(){
+  const fVal = document.getElementById('admFormulaEnteral').value;
+  const fOutra = document.getElementById('admFormulaEnteralOutra').value.trim();
+  const conhecida = fVal!=='outra_enteral' && FORMULAS_ENTERAIS[fVal];
+  const nome = conhecida ? FORMULAS_ENTERAIS[fVal].nome : (fOutra || '[completar fórmula]');
+  const tipo = conhecida ? FORMULAS_ENTERAIS[fVal].tipo : '';
+  const totalTxt = conhecida ? totalFormulaTexto(FORMULAS_ENTERAIS[fVal]) : '';
+  const vol = document.getElementById('admVolume').value;
+  const taxa = document.getElementById('admTaxa').value;
+  const kcal = document.getElementById('admKcalFormula').value;
+  const ptn = document.getElementById('admPtnFormula').value;
+  const fibra = document.getElementById('admFibraFormula').value;
+
+  let cabecalho = nome;
+  if(tipo) cabecalho += ` (${tipo})`;
+  if(totalTxt) cabecalho += ` — ${totalTxt}`;
+
+  const partes = [cabecalho];
+  if(vol && taxa) partes.push(`${vol} ml à ${taxa} ml/h`);
+  const kp = [];
+  if(kcal) kp.push(`${kcal} kcal`);
+  if(ptn) kp.push(`${ptn} g de proteína`);
+  if(fibra) kp.push(`${fibra} g de fibras`);
+  if(kp.length) partes.push(`sendo ${kp.join(' e ')}`);
+  return partes.join(', ');
+}
+
+function descreverFormulaParenteralAdm(){
+  const fVal = document.getElementById('admFormulaParenteral').value;
+  const fOutra = document.getElementById('admFormulaParenteralOutra').value.trim();
+  const conhecida = fVal!=='outra_parenteral' && FORMULAS_PARENTERAIS[fVal];
+  const nome = conhecida ? FORMULAS_PARENTERAIS[fVal].nome : (fOutra || '[completar fórmula]');
+  const vol = document.getElementById('admVolumeParenteral').value;
+  const taxa = document.getElementById('admTaxaParenteral').value;
+  const kcal = document.getElementById('admKcalParenteral').value;
+  const ptn = document.getElementById('admPtnParenteral').value;
+
+  const partes = [nome];
+  if(taxa) partes.push(`${taxa} ml/h`);
+  if(vol) partes.push(`totalizando ${vol} ml`);
+  const kp = [];
+  if(kcal) kp.push(`${kcal} kcal`);
+  if(ptn) kp.push(`${ptn} g de proteína`);
+  if(kp.length) partes.push(`possuindo ${kp.join(' e ')}`);
+  return partes.join(', ');
+}
+
 
 const RESTRICOES_STANDALONE = {
   pet_scan: 'PARA PET SCAN',
@@ -1808,7 +2102,14 @@ function itensBloqueioTextoPlano(){
   return grupos.map(g=>`${g.label}: ${g.itens.join(', ')}`).join(' | ');
 }
 
-function dietaComRestricao(){
+function classificacaoDieta(perfil){
+  if(!perfil) return '';
+  const cal = perfil.kcal < 20 ? 'hipocalórica' : perfil.kcal > 30 ? 'hipercalórica' : 'normocalórica';
+  const prot = perfil.ptn < 1.0 ? 'hipoproteica' : perfil.ptn > 1.2 ? 'hiperproteica' : 'normoproteica';
+  return `${cal}, ${prot}`;
+}
+
+function dietaComRestricao(calc){
   const d = DIETA_LABEL[document.getElementById('dieta').value];
   const manualKeys = restricoesSelecionadas();
   const temp = document.getElementById('temperatura').value;
@@ -1816,6 +2117,11 @@ function dietaComRestricao(){
   const bloqueios = document.getElementById('bloqueios').value.trim();
 
   let txt = d;
+
+  if(calc && calc.vet!==null && calc.ptn!==null){
+    const classe = classificacaoDieta(calc.perfil);
+    txt += ` (${classe}${classe?' — ':''}${calc.vet} kcal, ${calc.ptn}g ptn)`;
+  }
 
   const adaptacoes = [];
   manualKeys.filter(k=>RESTRICOES_ADAPTACAO.includes(k)).forEach(k=>adaptacoes.push(RESTRICAO_LABEL[k]));
@@ -1878,7 +2184,7 @@ function gerarTexto(){
   const peso = pesoVal;
   const altura = alturaVal;
   const leito = document.getElementById('leito').value.trim();
-  const dietaTxt = dietaComRestricao();
+  const dietaTxt = dietaComRestricao(calc);
   const dietaRaw = document.getElementById('dieta').value;
   const braden = document.getElementById('braden').value;
   const bloqueios = document.getElementById('bloqueios').value.trim();
@@ -1918,13 +2224,18 @@ function gerarTexto(){
     if(isJejum){
       txtNrs += `Jejum, até o momento.\n`;
     } else if(isEnteral){
-      txtNrs += `Dieta ENTERAL, de acordo com prescrição médica.\n`;
+      txtNrs += `Dieta ENTERAL: ${descreverFormulaEnteralAdm()}, de acordo com prescrição médica.\n`;
     } else if(isParenteral){
-      txtNrs += `Dieta VO zero, mantendo apenas nutrição parenteral.\n`;
+      txtNrs += `Dieta PARENTERAL: ${descreverFormulaParenteralAdm()}, de acordo com prescrição médica.\n`;
     } else {
       txtNrs += `Dieta ${dietaTxt}, de acordo com prescrição médica.\n`;
     }
-    txtNrs += `Planejamento terapêutico: VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg${calc.perfil.base==='ideal'?' peso ideal':''}) e ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg${calc.perfil.base==='ideal'?' peso ideal':''})\n`;
+    if(isEnteral || isParenteral){
+      const vetEmtnAdm = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
+      txtNrs += `Planejamento terapêutico: VET proposto diário pela EMTN ${vetEmtnAdm} kcal.\n`;
+    } else {
+      txtNrs += `Planejamento terapêutico: VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg${calc.perfil.base==='ideal'?' peso ideal':''}) e ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg${calc.perfil.base==='ideal'?' peso ideal':''})\n`;
+    }
     txtNrs += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}`;
 
     if(menor){
@@ -1991,9 +2302,9 @@ function gerarTexto(){
       txtEvolucao += `Oriento em relação aos procedimentos pós liberação da dieta, sobre o consumo exclusivo de alimentos ofertados pelo setor de nutrição e mantenho setor a disposição.\n`;
       txtEvolucao += `Acompanhantes compreendem e confirmam o entendimento das informações recebidas.\n`;
     } else if(isEnteral){
-      txtEvolucao += `Planejamento terapêutico: Paciente recebendo dieta enteral, VET final proposto de ${calc.vet} kcal e ${calc.ptn} g de proteína. Segue em acompanhamento da nutrição e equipe de EMTN.\n`;
+      txtEvolucao += `Planejamento terapêutico: Paciente com dieta enteral: ${descreverFormulaEnteralAdm()}. VET proposto diário pela EMTN ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal. Segue em acompanhamento da nutrição e equipe de EMTN.\n`;
     } else if(isParenteral){
-      txtEvolucao += `Planejamento terapêutico: Segue percorrendo nutrição parenteral conforme prescrição médica, meta calórica segundo EMTN.\n`;
+      txtEvolucao += `Planejamento terapêutico: Paciente com dieta parenteral: ${descreverFormulaParenteralAdm()}. Meta calórica segundo EMTN (VET proposto ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal).\n`;
     } else {
       txtEvolucao += `Planejamento terapêutico: Segue com dieta ${dietaTxt}, de acordo com prescrição médica.\n`;
       txtEvolucao += `VET proposto: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg).\n`;
@@ -2008,9 +2319,9 @@ function gerarTexto(){
       txtMulti += `Planejamento terapêutico: O paciente segue em jejum, até o momento. Oriento os acompanhantes em relação aos procedimentos pós liberação da dieta, em relação ao consumo exclusivo de alimentos ofertados pelo setor de nutrição ao paciente e o consumo dos alimentos do frigobar exclusivo para o acompanhante. Oriento sobre o tempo de entrega das refeições e alimentação dos acompanhantes.\n`;
       txtMulti += `Mantenho setor a disposição.\n`;
     } else if(isEnteral){
-      txtMulti += `Paciente recebendo dieta enteral, VET final proposto pela EMTN ${calc.vet} kcal e ${calc.ptn}g de proteína. Segue em acompanhamento da nutrição e equipe de EMTN. Mantenho setor a disposição.\n`;
+      txtMulti += `Paciente com dieta enteral: ${descreverFormulaEnteralAdm()}. VET proposto diário pela EMTN ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal. Segue em acompanhamento da nutrição e equipe de EMTN. Mantenho setor a disposição.\n`;
     } else if(isParenteral){
-      txtMulti += `Planejamento terapêutico: Paciente em dieta VO zero, mantendo apenas nutrição parenteral, conforme prescrição médica e acompanhamento da EMTN. Mantenho setor a disposição.\n`;
+      txtMulti += `Planejamento terapêutico: Paciente com dieta parenteral: ${descreverFormulaParenteralAdm()}, conforme prescrição médica. VET proposto pela EMTN ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal. Mantenho setor a disposição.\n`;
     } else {
       txtMulti += `Planejamento terapêutico: Oriento paciente e acompanhante sobre dieta ${dietaTxt.toLowerCase()} prescrita e sobre o consumo exclusivo de alimentos ofertados pelo serviço de nutrição dietética. Oriento sobre o consumo dos alimentos do frigobar exclusivo para o acompanhante. Oriento sobre o tempo de entrega das refeições e alimentação dos acompanhantes. Ambos compreendem e confirmam o entendimento das informações recebidas. Mantenho setor a disposição.\n`;
     }
@@ -2040,7 +2351,7 @@ function gerarTexto(){
         ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`
         : `Planejamento terapêutico: Mantido VET/proteína já estabelecido pela EMTN.\n`;
     } else if(isParenteral){
-      txt += `Paciente em dieta VO zero, mantendo apenas nutrição parenteral.\n`;
+      txt += `Paciente com dieta parenteral, mantida conforme prescrição médica.\n`;
       txt += calc.vet!==null
         ? `Planejamento terapêutico: VET proposto: ${calc.vet} kcal e ${calc.ptn} g de proteína. Meta calórica segundo EMTN.\n`
         : `Planejamento terapêutico: Meta calórica mantida conforme EMTN.\n`;
@@ -2090,6 +2401,8 @@ function gerarTexto(){
     const comVO = segVal('segTneVO')==='sim';
     const dietaOralTxt = comVO ? DIETA_LABEL[document.getElementById('tneDietaOral').value] : '';
     const aceitacaoOral = comVO ? document.getElementById('tneAceitacaoOral').value.trim() : '';
+    const emDesmame = segVal('segTneDesmame')==='sim';
+    const desmameDetalhe = emDesmame ? document.getElementById('tneDesmameDetalhe').value.trim() : '';
 
     let txt = `#Pela nutrição às ${hora}\n`;
 
@@ -2097,12 +2410,17 @@ function gerarTexto(){
       const fParVal = document.getElementById('tneFormulaParenteral').value;
       const fParOutra = document.getElementById('tneFormulaParenteralOutra').value.trim();
       const nomeFormula = fParVal==='outra_parenteral' ? (fParOutra || '[completar]') : FORMULAS_PARENTERAIS[fParVal].nome;
+      const tipoPar = fParVal==='outra_parenteral' ? '' : FORMULAS_PARENTERAIS[fParVal].tipo;
+      const descFormula = tipoPar ? `${nomeFormula} — ${tipoPar}, ${kcalFormula} kcal, ${ptnFormula}g proteína` : `${nomeFormula}, ${kcalFormula} kcal, ${ptnFormula}g proteína`;
 
-      txt += `Realizo revisita. Paciente${comVO ? ' em dieta VO reduzida' : ' em dieta VO zero'}, mantendo ${comVO?'':'apenas '}nutrição parenteral${comVO ? ' associada à via oral' : ''} (${nomeFormula}), via ${via.toLowerCase()}.\n`;
+      txt += `Paciente com dieta parenteral (${descFormula}), via ${VIA_PARENTERAL_TXT[via] || via}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${dietaOralTxt}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
-      txt += `Segue percorrendo ${taxaInfusao} ml/h, totalizando ${volumePrescrito} ml, possuindo ${kcalFormula} kcal e ${ptnFormula} g de proteína.\n\n`;
+      if(emDesmame && desmameDetalhe){
+        txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
+      }
+      txt += `Segue percorrendo ${taxaInfusao} ml/h, totalizando ${volumePrescrito} ml.\n\n`;
       txt += `Nas últimas 24h:\n`;
       txt += `Função intestinal ${FI_REVISITA[funcaoIntestinalVal]};\n`;
       txt += `HGT: ${hgt || 'sem registro'};\n`;
@@ -2116,13 +2434,23 @@ function gerarTexto(){
       const fEntVal = document.getElementById('tneFormulaEnteral').value;
       const fEntOutra = document.getElementById('tneFormulaEnteralOutra').value.trim();
       const nomeFormula = fEntVal==='outra_enteral' ? (fEntOutra || '[completar]') : FORMULAS_ENTERAIS[fEntVal].nome;
+      const tipoEnt = fEntVal==='outra_enteral' ? '' : FORMULAS_ENTERAIS[fEntVal].tipo;
       const volumeInfundido = document.getElementById('tneVolumeInfundido').value;
       const percInfusao = (volumePrescrito && volumeInfundido) ? Math.round((volumeInfundido/volumePrescrito)*100) : '[completar]';
 
-      const descFormula = fEntVal==='outra_enteral' ? nomeFormula : `${nomeFormula} (${FORMULAS_ENTERAIS[fEntVal].tipo})`;
-      txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g ptn${comVO ? ', associada à via oral' : ''}.\n`;
+      const dadosFormEnt = fEntVal!=='outra_enteral' ? FORMULAS_ENTERAIS[fEntVal] : null;
+      const totalTxtEnt = totalFormulaTexto(dadosFormEnt);
+      let descFormula = nomeFormula;
+      if(tipoEnt) descFormula += ` (${tipoEnt})`;
+      if(totalTxtEnt) descFormula += ` — ${totalTxtEnt}`;
+      const fibraFormula = document.getElementById('tneFibraFormula').value;
+      const fibraTxt = fibraFormula ? ` e ${fibraFormula} g de fibras` : '';
+      txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g ptn${fibraTxt}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${dietaOralTxt}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
+      }
+      if(emDesmame && desmameDetalhe){
+        txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
       txt += `Planejamento terapêutico: VET proposto diário pela EMTN ${vetEmtn} kcal.\n\n`;
       txt += `Nas últimas 24h:\n`;
@@ -2326,6 +2654,8 @@ function resetTudo(){
   document.getElementById('tneModoInfusao').selectedIndex = 0;
   document.getElementById('tneFormulaEnteral').selectedIndex = 0;
   document.getElementById('tneFormulaParenteral').selectedIndex = 0;
+  document.getElementById('admFormulaEnteral').selectedIndex = 0;
+  document.getElementById('admFormulaParenteral').selectedIndex = 0;
   document.getElementById('tneDietaOral').value = 'branda';
   selPerfil.value = 'auto';
 
@@ -2341,6 +2671,7 @@ function resetTudo(){
   resetSeg('segSkQ3', 0);
   resetSeg('segSkQ4', 0);
   resetSeg('segTneVO', 0);
+  resetSeg('segTneDesmame', 0);
 
   document.getElementById('outputContainer').innerHTML = '';
   document.getElementById('exportOutput').innerHTML = '';
@@ -2361,11 +2692,13 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
   'bloqueios','hgt','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
-  'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses',
-  'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra'];
-const CAMPOS_SELECT_RASCUNHO = ['andar','dieta','temperatura','tempoInternacao','braden','funcaoIntestinal','passagemTemplate','skPesoIdade','skPesoAltura','skAlturaIdade','skImcIdade','tneVia','tneModoInfusao','tneFormulaEnteral','tneFormulaParenteral','tneDietaOral'];
+  'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
+  'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
+  'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
+  'admVolumeParenteral','admTaxaParenteral','admKcalParenteral','admPtnParenteral','admFormulaParenteralOutra'];
+const CAMPOS_SELECT_RASCUNHO = ['andar','dieta','temperatura','tempoInternacao','braden','funcaoIntestinal','passagemTemplate','skPesoIdade','skPesoAltura','skAlturaIdade','skImcIdade','tneVia','tneModoInfusao','tneFormulaEnteral','tneFormulaParenteral','tneDietaOral','admFormulaEnteral','admFormulaParenteral'];
 const SEG_GROUPS_RASCUNHO = ['segSexo','segTipoNota','segQPerda','segQIngestao','segQGrave','segNrsEstado','segNrsDoenca',
-  'segSkQ1','segSkQ2','segSkQ3','segSkQ4','segTneVO'];
+  'segSkQ1','segSkQ2','segSkQ3','segSkQ4','segTneVO','segTneDesmame'];
 const CHIP_GROUPS_RASCUNHO = ['chipAlergias','chipRestricoes'];
 
 function coletarEstado(){
@@ -2692,10 +3025,13 @@ function extrairAnamnese(){
 
   const TERM = '(?:[.,;\\n]|(?=\\s+e\\s+(?:adora|gost[ae]|prefere|evita|detesta|n[ãa]o))|$)';
 
+  const SUJ = '(?:o\\s+paciente|a\\s+paciente|ele|ela)?\\s*';
   const alergiaRegexes = [
     new RegExp('al[eé]rgic[oa]\\s+a\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
     new RegExp('alergia\\s+a\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
     new RegExp('n[ãa]o\\s+pode\\s+comer\\s+([a-zà-ÿ0-9 ]+?)(?:\\s+por\\s+alergia|[.,;\\n]|$)','gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'tem\\s+alergia\\s*a?\\s*[:\\-]?\\s*([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'[ée]\\s+al[ée]rgic[oa]\\s*a?\\s*[:\\-]?\\s*([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
   ];
   const aversaoRegexes = [
     new RegExp('n[ãa]o\\s+gost[ae]\\s+de\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
@@ -2703,12 +3039,20 @@ function extrairAnamnese(){
     new RegExp('evita\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
     new RegExp('n[ãa]o\\s+come\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
     new RegExp('n[ãa]o\\s+suporta\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
+    new RegExp('n[ãa]o\\s+aceita\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
+    new RegExp('tem\\s+avers[ãa]o\\s*a?\\s*([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'n[ãa]o\\s+gost[ae]\\s*[:\\-]?\\s*(?:de\\s+)?([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'n[ãa]o\\s+come\\s*[:\\-]?\\s*([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'n[ãa]o\\s+aceita\\s*[:\\-]?\\s*([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'tem\\s+avers[ãa]o\\s*a?\\s*[:\\-]?\\s*([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
   ];
   const preferenciaRegexes = [
     new RegExp('(?<!n[ãa]o\\s)gost[ae]\\s+de\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
     new RegExp('prefere\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
     new RegExp('adora\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
     new RegExp('gostaria\\s+de\\s+([a-zà-ÿ0-9 ]+?)'+TERM,'gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'prefere\\s*[:\\-]?\\s*([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
+    new RegExp('aliment[oa]s?\\s+que\\s+'+SUJ+'gost[ae]\\s*[:\\-]?\\s*(?:de\\s+)?([a-zà-ÿ0-9,\\s]+?)'+TERM,'gi'),
   ];
 
   const alergias = extrairListaUnica(alergiaRegexes, texto);
