@@ -618,8 +618,9 @@
         <button data-val="admissao" class="active">Admissão</button>
         <button data-val="revisita">Revisita / Evolução</button>
         <button data-val="evolucao_dieta">Evolução de dieta</button>
+        <button data-val="tne">Reavaliação de TNE</button>
       </div>
-      <div class="hint">Em "Revisita / Evolução" e "Evolução de dieta", peso e altura são opcionais — preencha só se quiser recalcular VET/proteína.</div>
+      <div class="hint">Em "Revisita / Evolução", "Evolução de dieta" e "Reavaliação de TNE", peso e altura são opcionais — preencha só se quiser recalcular VET/proteína.</div>
 
       <label>Dieta prescrita</label>
       <select id="dieta">
@@ -755,6 +756,72 @@
       <div id="secaoHoraLiberacao">
       <label>Horário de liberação da dieta <span style="font-weight:normal;color:#888;">— para Evolução de dieta</span></label>
       <input type="text" id="horaLiberacao" placeholder="ex: 13:30h">
+      </div>
+
+      <div id="secaoTNE">
+      <div class="divider"></div>
+      <div class="nrs-sub" style="text-align:left;margin-bottom:8px;font-weight:bold;color:#666;">REAVALIAÇÃO DE TNE (TERAPIA NUTRICIONAL ENTERAL)</div>
+
+      <div class="row">
+        <div>
+          <label class="first">Via de acesso</label>
+          <select id="tneVia">
+            <option value="GTT">GTT (Gastrostomia)</option>
+            <option value="SNE">SNE (Sonda Nasoenteral)</option>
+            <option value="SNG">SNG (Sonda Nasogástrica)</option>
+            <option value="SNJ">SNJ (Sonda Nasojejunal)</option>
+            <option value="Jejunostomia">Jejunostomia</option>
+            <option value="Outra">Outra</option>
+          </select>
+        </div>
+        <div>
+          <label class="first">Modo de infusão</label>
+          <select id="tneModoInfusao">
+            <option value="BI">BI (Bomba de infusão)</option>
+            <option value="gravitacional">Gravitacional</option>
+            <option value="intermitente">Intermitente/Bolus</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Tipo de fórmula</label>
+      <select id="tneFormula">
+        <option value="polimérica">Polimérica</option>
+        <option value="oligomérica">Oligomérica/Semi-elementar</option>
+        <option value="hipercalórica">Hipercalórica</option>
+        <option value="hiperproteica">Hiperproteica</option>
+        <option value="padrão">Padrão</option>
+        <option value="elementar">Elementar</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label class="first">Volume prescrito (ml)</label>
+          <input type="number" id="tneVolumePrescrito" placeholder="ex: 800">
+        </div>
+        <div>
+          <label class="first">Taxa de infusão (ml/h)</label>
+          <input type="number" id="tneTaxaInfusao" placeholder="ex: 37">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Kcal da fórmula (kcal)</label>
+          <input type="number" id="tneKcalFormula" step="0.1" placeholder="ex: 800">
+        </div>
+        <div>
+          <label>Proteína da fórmula (g)</label>
+          <input type="number" id="tnePtnFormula" step="0.1" placeholder="ex: 30.4">
+        </div>
+      </div>
+
+      <label>VET proposto pela EMTN (kcal) <span style="font-weight:normal;color:#888;">— se vazio, usa o VET calculado</span></label>
+      <input type="number" id="tneVetEmtn" step="0.1" placeholder="ex: 1532.7">
+
+      <label>Volume infundido nas últimas 24h (ml)</label>
+      <input type="number" id="tneVolumeInfundido" placeholder="ex: 672">
+      <div class="hint" id="tnePercInfusaoHint"></div>
       </div>
 
       <label>Tempo de internação (regra de reavaliação NRS)</label>
@@ -1368,16 +1435,29 @@ function atualizarVisibilidadePorTipo(){
   const tipo = segVal('segTipoNota');
   const isAdmissao = tipo === 'admissao';
   const isEvolucaoDieta = tipo === 'evolucao_dieta';
+  const isTNE = tipo === 'tne';
 
   document.getElementById('secaoTriagemAdmissao').style.display = isAdmissao ? '' : 'none';
   document.getElementById('secaoRestricoesAdmissao').style.display = isAdmissao ? '' : 'none';
   document.getElementById('secaoAlergiasAdmissao').style.display = isAdmissao ? '' : 'none';
   document.getElementById('secaoComorbidadesAdmissao').style.display = isAdmissao ? '' : 'none';
   document.getElementById('secaoHoraLiberacao').style.display = isEvolucaoDieta ? '' : 'none';
+  document.getElementById('secaoTNE').style.display = isTNE ? '' : 'none';
 }
 
 function recalc(){
   atualizarVisibilidadePorTipo();
+
+  const volPrescrito = parseFloat(document.getElementById('tneVolumePrescrito').value);
+  const volInfundido = parseFloat(document.getElementById('tneVolumeInfundido').value);
+  const percHintTNE = document.getElementById('tnePercInfusaoHint');
+  if(volPrescrito && volInfundido){
+    const perc = Math.round((volInfundido/volPrescrito)*100);
+    percHintTNE.textContent = `${perc}% de infusão em relação ao volume prescrito.`;
+  } else {
+    percHintTNE.textContent = '';
+  }
+
   const peso = parseFloat(document.getElementById('peso').value);
   const alturaCm = parseFloat(document.getElementById('altura').value);
   const idade = parseInt(document.getElementById('idade').value)||null;
@@ -1480,7 +1560,7 @@ function recalc(){
   renderItensBloqueio();
   return {imc, classificacao, vet, ptn, prox: proxEvolucao, proxEvolucao, proxReavaliacao, perfil, nivel, pesoIdeal};
 }
-['peso','altura','idade','pesoAnterior'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
+['peso','altura','idade','pesoAnterior','tneVolumePrescrito','tneVolumeInfundido'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
 
 /* ---------- andar automático pelo número do leito ----------
    Premissa (a confirmar/ajustar se necessário): o 1º dígito do leito
@@ -1649,7 +1729,7 @@ function gerarTexto(){
   const temPesoAltura = !!(pesoVal && alturaVal);
 
   let calc;
-  if(tipoNota === 'revisita' || tipoNota === 'evolucao_dieta'){
+  if(tipoNota === 'revisita' || tipoNota === 'evolucao_dieta' || tipoNota === 'tne'){
     calc = temPesoAltura ? recalc() : calcSemPeso();
   } else {
     calc = recalc();
@@ -1868,6 +1948,37 @@ function gerarTexto(){
     blocks.push({titulo:null, texto: txt.trim()});
   }
 
+  /* ---------------- REAVALIAÇÃO DE TNE ---------------- */
+  if(tipoNota==='tne'){
+    const BRADEN_RISCO_TXT = {"sem registro":"não avaliado","sem risco":"ausente","baixo risco":"baixo","risco moderado":"moderado","alto risco":"alto"};
+    const MODO_INFUSAO_TXT = {BI:'BI', gravitacional:'sistema gravitacional', intermitente:'infusão intermitente'};
+
+    const via = document.getElementById('tneVia').value;
+    const modoInfusaoRaw = document.getElementById('tneModoInfusao').value;
+    const modoInfusao = MODO_INFUSAO_TXT[modoInfusaoRaw] || modoInfusaoRaw;
+    const formula = document.getElementById('tneFormula').value;
+    const volumePrescrito = document.getElementById('tneVolumePrescrito').value;
+    const taxaInfusao = document.getElementById('tneTaxaInfusao').value;
+    const kcalFormula = document.getElementById('tneKcalFormula').value || (calc.vet!==null ? calc.vet : '[completar]');
+    const ptnFormula = document.getElementById('tnePtnFormula').value || (calc.ptn!==null ? calc.ptn : '[completar]');
+    const vetEmtn = document.getElementById('tneVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
+    const volumeInfundido = document.getElementById('tneVolumeInfundido').value;
+    const percInfusao = (volumePrescrito && volumeInfundido) ? Math.round((volumeInfundido/volumePrescrito)*100) : '[completar]';
+    const bradenTxt = BRADEN_RISCO_TXT[braden] || braden;
+
+    let txt = `#Pela nutrição às ${hora}\n`;
+    txt += `Recebendo dieta enteral ${formula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g ptn.\n`;
+    txt += `Planejamento terapêutico: VET proposto diário pela EMTN ${vetEmtn} kcal.\n\n`;
+    txt += `Nas últimas 24h:\n`;
+    txt += `-Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% de infusão.\n`;
+    txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}.\n`;
+    txt += `- HGT: ${hgt || '[completar]'};\n\n`;
+    txt += `Risco ${bradenTxt} para lesão, segundo escala de Braden, dieta em evolução.\n\n`;
+    txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
+    txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
+    blocks.push({titulo:null, texto: txt.trim()});
+  }
+
   renderOutputBlocks(blocks);
   salvarRascunho();
   incrementarContador();
@@ -2054,6 +2165,9 @@ function resetTudo(){
   document.getElementById('funcaoIntestinal').value = 'nao_avaliado';
   document.getElementById('tempoInternacao').value = '7';
   document.getElementById('passagemTemplate').selectedIndex = 0;
+  document.getElementById('tneVia').selectedIndex = 0;
+  document.getElementById('tneModoInfusao').selectedIndex = 0;
+  document.getElementById('tneFormula').selectedIndex = 0;
   selPerfil.value = 'auto';
 
   resetSeg('segSexo', 0);
@@ -2087,8 +2201,9 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
   'bloqueios','hgt','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
-  'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses'];
-const CAMPOS_SELECT_RASCUNHO = ['andar','dieta','temperatura','tempoInternacao','braden','funcaoIntestinal','passagemTemplate','skPesoIdade','skPesoAltura','skAlturaIdade','skImcIdade'];
+  'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses',
+  'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido'];
+const CAMPOS_SELECT_RASCUNHO = ['andar','dieta','temperatura','tempoInternacao','braden','funcaoIntestinal','passagemTemplate','skPesoIdade','skPesoAltura','skAlturaIdade','skImcIdade','tneVia','tneModoInfusao','tneFormula'];
 const SEG_GROUPS_RASCUNHO = ['segSexo','segTipoNota','segQPerda','segQIngestao','segQGrave','segNrsEstado','segNrsDoenca',
   'segSkQ1','segSkQ2','segSkQ3','segSkQ4'];
 const CHIP_GROUPS_RASCUNHO = ['chipAlergias','chipRestricoes'];
