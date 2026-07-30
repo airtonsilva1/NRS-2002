@@ -980,7 +980,9 @@ function triagemPositiva(){
   const perda = segVal('segQPerda') === 'sim';
   const ingestao = segVal('segQIngestao') === 'sim';
   const grave = segVal('segQGrave') === 'sim';
-  return imcBaixo || perda || ingestao || grave;
+  const idade = parseInt(document.getElementById('idade').value)||0;
+  const idoso = idade>=70;
+  return imcBaixo || perda || ingestao || grave || idoso;
 }
 
 function nrsTotal(){
