@@ -65,6 +65,13 @@
   }
   @media (max-width: 880px){ .grid{grid-template-columns:1fr;} }
 
+  #barraFixaTipoNota{
+    position:sticky; top:0; z-index:40;
+    background:var(--card); padding:10px 0 8px;
+    margin:0 0 6px; border-bottom:1px solid var(--border);
+  }
+  #barraFixaTipoNota label{ margin:0 0 6px; }
+
   .panel{
     background:var(--card);
     border:1px solid var(--border);
@@ -302,19 +309,16 @@
   #micAnamneseBtn.mic-ativo{ background:#c33; color:#fff; border-color:#c33; animation: pulse 1.4s infinite; }
   @keyframes pulse{ 0%{opacity:1;} 50%{opacity:0.6;} 100%{opacity:1;} }
   .campo-faltante{ border-color:#c33 !important; box-shadow:0 0 0 2px rgba(204,51,51,0.15); }
-
-  #itensBloqueioBox:empty{ display:none; }
-  .bloqueio-box{
-    background:#fff8f0; border:1px solid #e8d3ae; border-radius:3px;
-    padding:10px 12px; margin-top:8px; font-size:12px;
+  .auto-flash{ animation: autoFlash 1.4s ease-out; }
+  @keyframes autoFlash{
+    0%{ background:#fff3cd; border-color:#e0c26a; }
+    100%{ background:#fff; border-color:var(--border); }
   }
-  .bloqueio-box .titulo{ font-weight:bold; color:#8a5a1f; margin-bottom:6px; text-transform:uppercase; font-size:11px; letter-spacing:0.4px; }
-  .bloqueio-box .item-grupo{ margin-bottom:6px; }
-  .bloqueio-box .item-grupo b{ color:#444; }
 
   /* ---------- modo escuro ---------- */
   body.dark{ background:#1b1c1e; color:#e6e6e6; }
   body.dark .panel{ background:#26272a; border-color:#3a3b3e; }
+  body.dark #barraFixaTipoNota{ background:#26272a; border-color:#3a3b3e; }
   body.dark .calc-box{ background:#202124; border-color:#3a3b3e; }
   body.dark select, body.dark input[type=text], body.dark input[type=number], body.dark textarea{
     background:#1f2023; color:#e6e6e6; border-color:#454649;
@@ -346,6 +350,7 @@
 </style>
 </head>
 <body>
+<button id="voltarTopoBtn" type="button" title="Voltar ao topo" style="display:none;position:fixed;bottom:20px;right:20px;z-index:200;width:44px;height:44px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.25);">↑</button>
 <div class="wrap">
 
   <header>
@@ -469,6 +474,8 @@
       <div class="hint" id="andarAutoHint" style="display:none;"></div>
 
       <div id="secaoTriagemAdmissao">
+      <details open>
+      <summary style="cursor:pointer;font-size:12.5px;text-transform:uppercase;letter-spacing:0.4px;color:#666;font-weight:bold;padding-bottom:6px;">📋 Avaliação de risco nutricional (NRS-2002 / StrongKids)</summary>
       <div class="nrs-box" id="nrsBoxAdulto">
         <div class="nrs-title">AVALIAÇÃO DE RISCO NUTRICIONAL (NRS, 2002)</div>
         <div class="nrs-sub">Nutritional Risk Screening, 2002</div>
@@ -610,19 +617,33 @@
 
         <div class="hint" style="margin-top:10px;">0 ponto = baixo risco · 1–3 pontos = médio risco · 4–5 pontos = alto risco.</div>
       </div>
+      </details>
       </div>
 
       <div class="divider"></div>
-      <label>Tipo de nota</label>
-      <div class="seg" id="segTipoNota">
-        <button data-val="admissao" class="active">Admissão</button>
-        <button data-val="revisita">Revisita / Evolução</button>
-        <button data-val="evolucao_dieta">Evolução de dieta</button>
-        <button data-val="tne">Reavaliação de TNE</button>
+      <div id="barraFixaTipoNota">
+        <label style="margin-top:0;">Tipo de nota <span id="relogioFixo" style="float:right;font-weight:bold;color:var(--accent);"></span></label>
+        <div class="seg" id="segTipoNota">
+          <button data-val="admissao" class="active">Admissão</button>
+          <button data-val="revisita">Revisita / Evolução</button>
+          <button data-val="evolucao_dieta">Evolução de dieta</button>
+          <button data-val="tne">Reavaliação de TNE</button>
+        </div>
+        <button type="button" id="irParaExportBtn" class="mini-btn" style="width:100%;margin-top:8px;">⬇ Ir para exportação (sistema)</button>
       </div>
       <div class="hint">Em "Revisita / Evolução", "Evolução de dieta" e "Reavaliação de TNE", peso e altura são opcionais — preencha só se quiser recalcular VET/proteína.</div>
 
       <div id="secaoDietaPrincipal">
+      <label class="first">Conduta conforme médico <span style="font-weight:normal;color:#888;">— opcional</span></label>
+      <select id="presetMedico">
+        <option value="">Nenhuma / não se aplica</option>
+        <option value="thiago_lirio">Dr. Thiago Lírio</option>
+        <option value="noel">Dr. Noel</option>
+      </select>
+      <div class="hint" id="presetMedicoHint"></div>
+
+      <div class="hint" style="margin-top:6px;color:#8a5a1f;">⚠️ A conduta por médico é uma <b>sugestão de ponto de partida</b> — a dieta pode evoluir, e a prescrição final é sempre do médico. Confira sempre no MV antes de fechar a nota.</div>
+
       <label>Dieta prescrita</label>
       <select id="dieta">
         <option value="zero">Zero / Jejum</option>
@@ -727,6 +748,8 @@
       </div>
 
       <div id="secaoRestricoesAdmissao">
+      <details>
+      <summary style="cursor:pointer;font-size:12.5px;text-transform:uppercase;letter-spacing:0.4px;color:#666;font-weight:bold;padding-bottom:6px;">🍽️ Restrições associadas (clique para ver a lista)</summary>
       <label>Restrições associadas (marque quantas precisar)</label>
       <input type="text" id="filtroRestricoes" placeholder="Filtrar lista... (ex: renal, glúten)" style="margin-bottom:8px;">
       <div class="chipgroup" id="chipRestricoes">
@@ -751,7 +774,8 @@
         <label class="chip"><input type="checkbox" value="branda_disfagia"> Para disfagia</label>
       </div>
 
-      <div id="itensBloqueioBox"></div>
+      <div id="avisoRedundanciaHint" style="font-size:12px;margin-top:6px;"></div>
+      </details>
       </div>
 
       <label>Nível de assistência <span class="badge" id="nivelBadge">—</span></label>
@@ -760,6 +784,8 @@
       <div class="divider"></div>
 
       <div id="secaoAlergiasAdmissao">
+      <details>
+      <summary style="cursor:pointer;font-size:12.5px;text-transform:uppercase;letter-spacing:0.4px;color:#666;font-weight:bold;padding-bottom:6px;">🥜 Alergias específicas (clique para ver a lista)</summary>
       <label class="first">Alergias / restrições específicas</label>
       <div class="chipgroup" id="chipAlergias">
         <label class="chip"><input type="checkbox" value="Glúten"> Glúten</label>
@@ -773,6 +799,7 @@
 
       <label>Outras alergias alimentares (livre)</label>
       <input type="text" id="alergias" placeholder="ex: sem outras alergias relatadas">
+      </details>
       </div>
 
       <div id="secaoComorbidadesAdmissao">
@@ -795,6 +822,7 @@
         <option value="servir sem resíduos">Servir sem resíduos</option>
       </select>
       <textarea id="bloqueios" placeholder="ex: embutidos (HAS), preferência por frutas cítricas..."></textarea>
+      <div class="hint" id="bloqueiosSiglaHint"></div>
 
       <label>Braden</label>
       <select id="braden">
@@ -947,6 +975,8 @@
 
       <div class="calc-box" id="calcBox"></div>
 
+      <div id="checklistBox" style="font-size:12px;color:#666;margin:8px 0;line-height:1.8;"></div>
+
       <button class="btn" id="gerarBtn">Gerar nota</button>
     </div>
 
@@ -979,12 +1009,15 @@
 
       <label>Diagnóstico de Internação</label>
       <textarea id="sbm_diagnostico" placeholder="opcional"></textarea>
+      <div class="hint" id="sbm_diagnosticoSiglaHint"></div>
 
       <label>HDA</label>
       <textarea id="sbm_hda" placeholder="opcional"></textarea>
+      <div class="hint" id="sbm_hdaSiglaHint"></div>
 
       <label>HPP</label>
       <textarea id="sbm_hpp" placeholder="opcional"></textarea>
+      <div class="hint" id="sbm_hppSiglaHint"></div>
 
       <label>Passagem de Plantão</label>
       <select id="passagemTemplate">
@@ -1027,7 +1060,10 @@ function horaAtualTexto(){
 }
 function atualizaRelogio(){
   const d = new Date();
-  document.getElementById('liveClock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const txt = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  document.getElementById('liveClock').textContent = txt;
+  const rf = document.getElementById('relogioFixo');
+  if(rf) rf.textContent = txt;
 }
 setInterval(atualizaRelogio, 1000); atualizaRelogio();
 
@@ -1709,6 +1745,41 @@ function atualizarVisibilidadePorTipo(){
   }
 }
 
+function atualizarChecklist(){
+  const box = document.getElementById('checklistBox');
+  if(!box) return;
+  const tipo = segVal('segTipoNota');
+  const itens = [];
+
+  const peso = document.getElementById('peso').value;
+  const altura = document.getElementById('altura').value;
+  const braden = document.getElementById('braden').value;
+  const hgt = document.getElementById('hgt').value;
+  const funcaoIntestinal = document.getElementById('funcaoIntestinal').value;
+
+  const obrigatorioPesoAltura = (tipo==='admissao');
+  itens.push([!!peso, `Peso${obrigatorioPesoAltura?'':' (opcional)'}`]);
+  itens.push([!!altura, `Altura${obrigatorioPesoAltura?'':' (opcional)'}`]);
+  itens.push([braden!=='sem registro', 'Braden']);
+  itens.push([funcaoIntestinal!=='nao_avaliado', 'Função intestinal']);
+  itens.push([!!hgt, 'HGT']);
+
+  if(tipo==='tne'){
+    const via = document.getElementById('tneVia').value;
+    const viaParenteral = VIAS_PARENTERAIS.includes(via);
+    if(viaParenteral){
+      itens.push([!!document.getElementById('tneVolumePrescrito').value, 'Volume/taxa parenteral']);
+    } else {
+      itens.push([!!document.getElementById('tneVolumePrescrito').value, 'Volume prescrito']);
+      itens.push([!!document.getElementById('tneVolumeInfundido').value, 'Volume infundido 24h']);
+    }
+  }
+
+  box.innerHTML = itens.map(([ok,label])=>
+    `<span style="margin-right:10px;">${ok?'✅':'⬜'} ${label}</span>`
+  ).join('');
+}
+
 function recalc(){
   atualizarVisibilidadePorTipo();
 
@@ -1757,9 +1828,12 @@ function recalc(){
     if(zRes){
       document.getElementById('skPesoIdade').value = zRes.classePeso;
       document.getElementById('skAlturaIdade').value = zRes.classeAltura;
+      destacarAutoPreenchido('skPesoIdade');
+      destacarAutoPreenchido('skAlturaIdade');
       let msg = `Calculado automaticamente (${zRes.meses} meses): Peso/Idade Z=${zRes.zPeso} (${zRes.classePeso}) · Altura/Idade Z=${zRes.zAltura} (${zRes.classeAltura})`;
       if(zRes.zImc!==null){
         document.getElementById('skImcIdade').value = zRes.classeImc;
+        destacarAutoPreenchido('skImcIdade');
         msg += ` · IMC/Idade Z=${zRes.zImc} (${zRes.classeImc})`;
       }
       msg += `. Confira e ajuste manualmente se necessário.`;
@@ -1778,7 +1852,8 @@ function recalc(){
     box.innerHTML = '<div class="hint">Preencha peso e altura para ver os cálculos.</div>';
     const tneOverElVazio = document.getElementById('tneOverfeedingHint');
     if(tneOverElVazio) tneOverElVazio.textContent = '';
-    renderItensBloqueio();
+    verificarRedundancia();
+    atualizarChecklist();
     return null;
   }
 
@@ -1858,11 +1933,17 @@ function recalc(){
     }
   }
 
-  renderItensBloqueio();
+  verificarRedundancia();
+  atualizarChecklist();
   return {imc, classificacao, vet, ptn, prox: proxEvolucao, proxEvolucao, proxReavaliacao, perfil, nivel, pesoIdeal};
 }
 ['peso','altura','idade','pesoAnterior','tneVolumePrescrito','tneVolumeInfundido','admVolume'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
 ['tneVia','tneFormulaEnteral','tneFormulaParenteral','admFormulaEnteral','admFormulaParenteral'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
+['tneFormulaEnteral','tneFormulaParenteral','admFormulaEnteral','admFormulaParenteral'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', function(){
+    if(!this.value.startsWith('outra_')) registrarUsoFormula(this.value);
+  });
+});
 
 /* ---------- andar automático pelo número do leito ----------
    Premissa (a confirmar/ajustar se necessário): o 1º dígito do leito
@@ -1904,9 +1985,9 @@ function frasesBloqueio(){
   const alerg = [...chips, alergLivre].filter(Boolean).join(', ');
   const comorb = document.getElementById('comorbidades').value.trim();
   let linha = "Não informa possuir alergia alimentar e não informa comorbidades.";
-  if(alerg && comorb) linha = `Refere alergia/restrição alimentar: ${alerg}. Comorbidades relatadas: ${comorb}.`;
-  else if(alerg) linha = `Refere alergia/restrição alimentar: ${alerg}. Não informa comorbidades.`;
-  else if(comorb) linha = `Não informa alergia alimentar. Comorbidades relatadas: ${comorb}.`;
+  if(alerg && comorb) linha = `Refere alergia/restrição alimentar: ${V(alerg)}. Comorbidades relatadas: ${V(comorb)}.`;
+  else if(alerg) linha = `Refere alergia/restrição alimentar: ${V(alerg)}. Não informa comorbidades.`;
+  else if(comorb) linha = `Não informa alergia alimentar. Comorbidades relatadas: ${V(comorb)}.`;
   return linha;
 }
 
@@ -1980,19 +2061,54 @@ function autoCalcularEnteral(selId, volId, kcalId, ptnId, fibraId){
   if(dados && dados.kcalMl && vol){
     document.getElementById(kcalId).value = Math.round(dados.kcalMl*vol*10)/10;
     document.getElementById(ptnId).value = Math.round(dados.ptnMl*vol*10)/10;
+    destacarAutoPreenchido(kcalId);
+    destacarAutoPreenchido(ptnId);
     if(fibraId && document.getElementById(fibraId)){
       document.getElementById(fibraId).value = dados.fibraMl ? Math.round(dados.fibraMl*vol*10)/10 : '';
+      if(dados.fibraMl) destacarAutoPreenchido(fibraId);
     }
   }
 }
 
+function registrarUsoFormula(formulaKey){
+  try{
+    const usos = JSON.parse(localStorage.getItem('nutriFormulaUso') || '{}');
+    usos[formulaKey] = (usos[formulaKey]||0)+1;
+    localStorage.setItem('nutriFormulaUso', JSON.stringify(usos));
+  }catch(e){}
+}
+
+function formulasMaisUsadas(mapa, limite){
+  try{
+    const usos = JSON.parse(localStorage.getItem('nutriFormulaUso') || '{}');
+    return Object.keys(usos)
+      .filter(k=>mapa[k])
+      .sort((a,b)=>usos[b]-usos[a])
+      .slice(0,limite);
+  }catch(e){ return []; }
+}
+
 function popularSelectFormulas(id, mapa, valorOutra){
   const sel = document.getElementById(id);
+  const maisUsadas = formulasMaisUsadas(mapa, 3);
+  if(maisUsadas.length){
+    const grupoUsadas = document.createElement('optgroup');
+    grupoUsadas.label = '⭐ Mais usadas por você';
+    maisUsadas.forEach(key=>{
+      const o = document.createElement('option');
+      o.value = key; o.textContent = mapa[key].nome;
+      grupoUsadas.appendChild(o);
+    });
+    sel.appendChild(grupoUsadas);
+  }
+  const grupoTodas = document.createElement('optgroup');
+  grupoTodas.label = maisUsadas.length ? 'Todas as fórmulas' : mapa===FORMULAS_ENTERAIS ? 'Fórmulas enterais' : 'Bolsas parenterais';
   Object.entries(mapa).forEach(([key,val])=>{
     const o = document.createElement('option');
     o.value = key; o.textContent = val.nome;
-    sel.appendChild(o);
+    grupoTodas.appendChild(o);
   });
+  sel.appendChild(grupoTodas);
   const oOutra = document.createElement('option');
   oOutra.value = valorOutra;
   oOutra.textContent = 'Outra (especificar abaixo)';
@@ -2051,62 +2167,107 @@ function descreverFormulaParenteralAdm(){
 }
 
 
+function destacarAutoPreenchido(elOrId){
+  const el = typeof elOrId==='string' ? document.getElementById(elOrId) : elOrId;
+  if(!el) return;
+  el.classList.remove('auto-flash');
+  void el.offsetWidth; // força reflow pra reiniciar a animação
+  el.classList.add('auto-flash');
+}
+
+const ACRONIMOS_MEDICOS = {
+  'HAS':'hipertensão arterial sistêmica', 'DM':'diabetes mellitus', 'DM1':'diabetes mellitus tipo 1',
+  'DM2':'diabetes mellitus tipo 2', 'IRC':'insuficiência renal crônica', 'IRA':'insuficiência renal aguda',
+  'DRC':'doença renal crônica', 'DPOC':'doença pulmonar obstrutiva crônica', 'AVC':'acidente vascular cerebral',
+  'IAM':'infarto agudo do miocárdio', 'ICC':'insuficiência cardíaca congestiva', 'HD':'hemodiálise',
+  'TCE':'traumatismo cranioencefálico', 'TEP':'tromboembolismo pulmonar', 'TVP':'trombose venosa profunda',
+  'ITU':'infecção do trato urinário', 'PA':'pressão arterial', 'FA':'fibrilação atrial',
+  'DLP':'dislipidemia', 'HD.':'hemodiálise', 'ELA':'esclerose lateral amiotrófica',
+  'DM/HAS':'diabetes mellitus e hipertensão arterial sistêmica',
+};
+
+function sugerirExpansaoSiglas(campoId, hintId){
+  const campo = document.getElementById(campoId);
+  const hint = document.getElementById(hintId);
+  if(!campo || !hint) return;
+  campo.addEventListener('input', ()=>{
+    const texto = campo.value;
+    const achadas = [];
+    Object.keys(ACRONIMOS_MEDICOS).forEach(sigla=>{
+      const re = new RegExp('\\b'+sigla.replace('.','\\.')+'\\b(?!\\s*\\()','i');
+      if(re.test(texto) && !achadas.includes(sigla)) achadas.push(sigla);
+    });
+    if(!achadas.length){ hint.innerHTML=''; return; }
+    hint.innerHTML = 'Expandir: ' + achadas.map(s=>
+      `<button type="button" class="mini-btn" data-sigla="${s}" data-campo="${campoId}" style="padding:2px 8px;font-size:11px;margin:0 4px 4px 0;">${s} → ${ACRONIMOS_MEDICOS[s]}</button>`
+    ).join('');
+    hint.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const sigla = btn.dataset.sigla;
+        const alvo = document.getElementById(btn.dataset.campo);
+        const re = new RegExp('\\b'+sigla.replace('.','\\.')+'\\b(?!\\s*\\()','i');
+        alvo.value = alvo.value.replace(re, `${sigla} (${ACRONIMOS_MEDICOS[sigla]})`);
+        alvo.dispatchEvent(new Event('input'));
+        salvarRascunho();
+      });
+    });
+  });
+}
+['bloqueios','sbm_diagnostico','sbm_hda','sbm_hpp'].forEach(id=>sugerirExpansaoSiglas(id, id+'SiglaHint'));
+
+const MEDICOS_PRESET = {
+  thiago_lirio: {dieta:'pastosa', temp:'fria', restricoes:['sem_gluten','sem_lactose'], obs:'Conduta habitual do Dr. Thiago Lírio: pastosa, sem glúten, sem lactose, temperatura fria. Confirme no MV que a prescrição desta internação segue o mesmo padrão.'},
+  noel: {dieta:'liquida', temp:'temperatura ambiente', restricoes:[], obs:'Conduta habitual do Dr. Noel: líquida na 1ª hora, evoluindo para pastosa após 1h, temperatura ambiente. Ajuste a dieta manualmente após a 1ª hora. Confirme no MV.'},
+};
+
+document.getElementById('presetMedico').addEventListener('change', function(){
+  const preset = MEDICOS_PRESET[this.value];
+  const hint = document.getElementById('presetMedicoHint');
+  if(!preset){ hint.textContent = ''; return; }
+  document.getElementById('dieta').value = preset.dieta;
+  document.getElementById('temperatura').value = preset.temp;
+  destacarAutoPreenchido('dieta');
+  destacarAutoPreenchido('temperatura');
+  preset.restricoes.forEach(r=>{
+    const chk = document.querySelector(`#chipRestricoes input[value="${r}"]`);
+    if(chk) chk.checked = true;
+  });
+  hint.innerHTML = `💡 ${preset.obs}`;
+  hint.style.color = '#8a5a1f';
+  recalc();
+  salvarRascunho();
+});
+
 const RESTRICOES_STANDALONE = {
   pet_scan: 'PARA PET SCAN',
   alergia_latex: 'COM PRECAUÇÃO PARA ALERGIA AO LÁTEX',
   branda_disfagia: 'ADAPTADA CONFORME ORIENTAÇÃO DA FONOAUDIOLOGIA (DISFAGIA)'
 };
 
-/* Itens específicos a bloquear no SBM para cada restrição — baseado no guia de bolso
-   do setor (para as restrições clássicas) + referência clínica geral (para as demais).
-   hiperproteica e disfagia não geram lista, pois não são restrições de exclusão de itens. */
-const BLOQUEIOS_POR_RESTRICAO = {
-  hipossodica: ['embutidos', 'pão de queijo', 'refrigerante', 'manteiga com sal', 'salgadinhos industrializados', 'caldos/temperos prontos em tablete'],
-  hipoglicidica: ['açúcar simples', 'produtos industrializados com açúcar (ex: sorvete)', 'mel', 'pão francês', 'brioche', 'croissant'],
-  hipolipidica: ['frituras', 'carnes gordas', 'embutidos gordurosos', 'manteiga/margarina em excesso', 'creme de leite', 'queijos amarelos', 'molhos cremosos', 'coco e derivados'],
-  irc: ['banana', 'mamão', 'ameixa', 'melão', 'kiwi', 'abacate', 'uva', 'carambola', 'damasco', 'figo', 'maracujá', 'tangerina', 'coco e água de coco', 'aveia', 'leguminosas', 'chocolate', 'embutidos', 'oleaginosas', 'frutos do mar'],
-  irc_hd: ['leite e derivados (fósforo)', 'oleaginosas', 'chocolate', 'refrigerante à base de cola (fósforo)', 'embutidos', 'banana', 'laranja', 'tomate', 'batata'],
-  hipoproteica: ['carnes vermelhas em excesso', 'embutidos', 'queijos curados', 'ovos em excesso'],
-  antifermentativa: ['feijão e leguminosas', 'couve', 'brócolis', 'couve-flor', 'repolho', 'cebola crua', 'refrigerantes/bebidas gaseificadas', 'doces concentrados'],
-  neutropenica: ['saladas e frutas cruas sem casca', 'sushi/peixe cru', 'leite e queijos não pasteurizados', 'iogurtes com probióticos vivos', 'mel não pasteurizado', 'água não filtrada/mineral não lacrada'],
-  sem_acidos: ['limão', 'laranja pera', 'abacaxi', 'uva', 'acerola', 'kiwi', 'amora', 'morango', 'tangerina', 'maracujá', 'maçã verde'],
-  sem_irritantes: ['café', 'pimenta', 'hortelã', 'frituras', 'shoyo', 'mostarda', 'condimentos', 'frutas ácidas'],
-  sem_residuos: ['açúcar e produtos com açúcar', 'alimentos integrais', 'folhas cruas', 'frutas laxativas', 'oleaginosas', 'leguminosas', 'leite e derivados com lactose'],
-  sem_gluten: ['pães e torradas de trigo/cevada/centeio', 'granola', 'quinoa (traços)', 'macarrão comum', 'cerveja'],
-  sem_lactose: ['leite e derivados com lactose', 'manteiga', 'creme de leite', 'cream cheese', 'queijos comuns', 'iogurte comum'],
-  sem_xantinas: ['café', 'chá preto/mate', 'refrigerante à base de cola', 'chocolate', 'bebidas industrializadas com cafeína'],
-  sem_sacarose: ['açúcar de mesa', 'doces', 'mel', 'refrigerantes comuns', 'produtos industrializados açucarados'],
-  pet_scan: ['massas', 'pão', 'arroz', 'doces', 'açúcar', 'mel', 'adoçantes', 'farinhas', 'batata', 'beterraba', 'cenoura', 'milho', 'mandioca/cará', 'leguminosas', 'leite', 'queijos processados', 'iogurtes não naturais', 'frutas'],
-  alergia_latex: ['banana', 'abacate', 'kiwi', 'maçã', 'mamão', 'manga', 'cereja', 'abacaxi', 'figo', 'uva', 'nectarina', 'ameixa', 'pera', 'castanhas', 'tomate', 'batata', 'soja'],
-};
+const CONFLITOS_RESTRICAO = [
+  ['hipoproteica','hiperproteica'],
+  ['irc','irc_hd'],
+];
 
-function gruposBloqueioSugerido(){
-  return restricoesSelecionadas()
-    .filter(k => BLOQUEIOS_POR_RESTRICAO[k])
-    .map(k => ({ label: RESTRICAO_LABEL[k], itens: BLOQUEIOS_POR_RESTRICAO[k] }));
-}
-
-function renderItensBloqueio(){
-  const box = document.getElementById('itensBloqueioBox');
-  const grupos = gruposBloqueioSugerido();
-  if(grupos.length===0){ box.innerHTML=''; return; }
-  box.innerHTML = `<div class="bloqueio-box">
-    <div class="titulo">Itens sugeridos para bloquear no SBM</div>
-    ${grupos.map(g=>`<div class="item-grupo"><b>${g.label}:</b> ${g.itens.join(', ')}</div>`).join('')}
-  </div>`;
-}
-
-function itensBloqueioTextoPlano(){
-  const grupos = gruposBloqueioSugerido();
-  if(grupos.length===0) return '';
-  return grupos.map(g=>`${g.label}: ${g.itens.join(', ')}`).join(' | ');
-}
-
-function classificacaoDieta(perfil){
-  if(!perfil) return '';
-  const cal = perfil.kcal < 20 ? 'hipocalórica' : perfil.kcal > 30 ? 'hipercalórica' : 'normocalórica';
-  const prot = perfil.ptn < 1.0 ? 'hipoproteica' : perfil.ptn > 1.2 ? 'hiperproteica' : 'normoproteica';
-  return `${cal}, ${prot}`;
+function verificarRedundancia(){
+  const hint = document.getElementById('avisoRedundanciaHint');
+  if(!hint) return;
+  const selecionadas = restricoesSelecionadas();
+  const avisos = [];
+  CONFLITOS_RESTRICAO.forEach(([a,b])=>{
+    if(selecionadas.includes(a) && selecionadas.includes(b)){
+      avisos.push(`"${RESTRICAO_LABEL[a]}" e "${RESTRICAO_LABEL[b]}" foram marcadas juntas — confira se é isso mesmo.`);
+    }
+  });
+  const chipsAlergia = alergiasSelecionadas().map(a=>a.toLowerCase());
+  const outrasAlergias = (document.getElementById('alergias').value||'').toLowerCase();
+  chipsAlergia.forEach(item=>{
+    if(outrasAlergias.includes(item)){
+      avisos.push(`"${item}" já está marcado como chip e também aparece no campo de texto livre — pode duplicar no texto.`);
+    }
+  });
+  hint.innerHTML = avisos.length ? avisos.map(a=>`⚠️ ${a}`).join('<br>') : '';
+  hint.style.color = avisos.length ? '#9c3b32' : '';
 }
 
 function dietaComRestricao(calc){
@@ -2117,11 +2278,6 @@ function dietaComRestricao(calc){
   const bloqueios = document.getElementById('bloqueios').value.trim();
 
   let txt = d;
-
-  if(calc && calc.vet!==null && calc.ptn!==null){
-    const classe = classificacaoDieta(calc.perfil);
-    txt += ` (${classe}${classe?' — ':''}${calc.vet} kcal, ${calc.ptn}g ptn)`;
-  }
 
   const adaptacoes = [];
   manualKeys.filter(k=>RESTRICOES_ADAPTACAO.includes(k)).forEach(k=>adaptacoes.push(RESTRICAO_LABEL[k]));
@@ -2228,7 +2384,7 @@ function gerarTexto(){
     } else if(isParenteral){
       txtNrs += `Dieta PARENTERAL: ${descreverFormulaParenteralAdm()}, de acordo com prescrição médica.\n`;
     } else {
-      txtNrs += `Dieta ${dietaTxt}, de acordo com prescrição médica.\n`;
+      txtNrs += `Dieta ${V(dietaTxt)}, de acordo com prescrição médica.\n`;
     }
     if(isEnteral || isParenteral){
       const vetEmtnAdm = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
@@ -2306,7 +2462,7 @@ function gerarTexto(){
     } else if(isParenteral){
       txtEvolucao += `Planejamento terapêutico: Paciente com dieta parenteral: ${descreverFormulaParenteralAdm()}. Meta calórica segundo EMTN (VET proposto ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal).\n`;
     } else {
-      txtEvolucao += `Planejamento terapêutico: Segue com dieta ${dietaTxt}, de acordo com prescrição médica.\n`;
+      txtEvolucao += `Planejamento terapêutico: Segue com dieta ${V(dietaTxt)}, de acordo com prescrição médica.\n`;
       txtEvolucao += `VET proposto: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg).\n`;
       txtEvolucao += `Oriento em relação as características da dieta, sobre o consumo exclusivo de alimentos ofertados pelo setor de nutrição e mantenho o setor a disposição.\n`;
     }
@@ -2323,7 +2479,7 @@ function gerarTexto(){
     } else if(isParenteral){
       txtMulti += `Planejamento terapêutico: Paciente com dieta parenteral: ${descreverFormulaParenteralAdm()}, conforme prescrição médica. VET proposto pela EMTN ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal. Mantenho setor a disposição.\n`;
     } else {
-      txtMulti += `Planejamento terapêutico: Oriento paciente e acompanhante sobre dieta ${dietaTxt.toLowerCase()} prescrita e sobre o consumo exclusivo de alimentos ofertados pelo serviço de nutrição dietética. Oriento sobre o consumo dos alimentos do frigobar exclusivo para o acompanhante. Oriento sobre o tempo de entrega das refeições e alimentação dos acompanhantes. Ambos compreendem e confirmam o entendimento das informações recebidas. Mantenho setor a disposição.\n`;
+      txtMulti += `Planejamento terapêutico: Oriento paciente e acompanhante sobre dieta ${V(dietaTxt.toLowerCase())} prescrita e sobre o consumo exclusivo de alimentos ofertados pelo serviço de nutrição dietética. Oriento sobre o consumo dos alimentos do frigobar exclusivo para o acompanhante. Oriento sobre o tempo de entrega das refeições e alimentação dos acompanhantes. Ambos compreendem e confirmam o entendimento das informações recebidas. Mantenho setor a disposição.\n`;
     }
     txtMulti += `Oriento paciente e acompanhante em relação ao sistema digital de marcação de cardápios. Ambos compreendem e confirmam o entendimento das informações e mantenho setor à disposição.\n`;
     txtMulti += `Em caso de dúvidas: 213445-2800 (ramal 2930 e 2956).`;
@@ -2356,7 +2512,7 @@ function gerarTexto(){
         ? `Planejamento terapêutico: VET proposto: ${calc.vet} kcal e ${calc.ptn} g de proteína. Meta calórica segundo EMTN.\n`
         : `Planejamento terapêutico: Meta calórica mantida conforme EMTN.\n`;
     } else {
-      txt += `Segue com dieta prescrita ${dietaTxt.toLowerCase()}, ajustada conforme as preferências do paciente e prescrição médica.\n`;
+      txt += `Segue com dieta prescrita ${V(dietaTxt.toLowerCase())}, ajustada conforme as preferências do paciente e prescrição médica.\n`;
       txt += calc.vet!==null
         ? `Planejamento terapêutico: VET proposto: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e proteína: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`
         : `Planejamento terapêutico: Mantido plano nutricional já estabelecido, sem alterações.\n`;
@@ -2377,7 +2533,7 @@ function gerarTexto(){
     let txt = `#Pela Nutrição às ${hora}\n`;
     txt += `Em tempo:\n`;
     const liberacaoTxt = horaLiberacao ? ` para ${horaLiberacao}` : '';
-    txt += `Dieta oral liberada: ${dietaTxt.toLowerCase()}${liberacaoTxt}, conforme prescrição médica.\n`;
+    txt += `Dieta oral liberada: ${V(dietaTxt.toLowerCase())}${liberacaoTxt}, conforme prescrição médica.\n`;
     txt += `Oriento paciente e acompanhante em relação as características da dieta.\n`;
     if(funcaoIntestinalVal !== 'nao_avaliado'){ txt += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`; }
     if(hgt){ txt += `HGT: ${hgt}\n`; }
@@ -2415,7 +2571,7 @@ function gerarTexto(){
 
       txt += `Paciente com dieta parenteral (${descFormula}), via ${VIA_PARENTERAL_TXT[via] || via}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
-        txt += `Dieta oral associada: ${dietaOralTxt}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
+        txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
@@ -2447,7 +2603,7 @@ function gerarTexto(){
       const fibraTxt = fibraFormula ? ` e ${fibraFormula} g de fibras` : '';
       txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g ptn${fibraTxt}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
-        txt += `Dieta oral associada: ${dietaOralTxt}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
+        txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
@@ -2467,15 +2623,47 @@ function gerarTexto(){
   renderOutputBlocks(blocks);
   salvarRascunho();
   incrementarContador();
+  const outputEl = document.getElementById('outputContainer');
+  if(outputEl) outputEl.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function marcarCampoFaltante(id){
   const el = document.getElementById(id);
   if(!el) return;
   el.classList.add('campo-faltante');
+  el.scrollIntoView({behavior:'smooth', block:'center'});
   el.focus();
   const remover = ()=>{ el.classList.remove('campo-faltante'); el.removeEventListener('input', remover); };
   el.addEventListener('input', remover);
+}
+
+// Marca um valor para ficar em negrito no texto final (usado pra variáveis
+// que não dá pra pegar com segurança só por regex, tipo alergias/comorbidades livres)
+function V(x){ return `\u0001${x}\u0002`; }
+
+function boldarVariaveis(t){
+  // marcações explícitas feitas com V(...) na hora de montar o texto
+  t = t.replace(/\u0001/g, '<b>').replace(/\u0002/g, '</b>');
+  // IMC com unidade (processar antes da regra genérica de número+unidade)
+  t = t.replace(/(IMC[:\s]*)(\d+(?:[.,]\d+)?\s*kg\/m²)/gi, '$1<b>$2</b>');
+  // valores numéricos com unidade (peso, altura, kcal, proteína, fibra, volume, taxa, HGT)
+  t = t.replace(/(\d+(?:[.,]\d+)?)\s*(kg(?!\/)|cm|kcal|ml\/h|ml|mg\/dL|g de proteína|g de fibras|g ptn|g\b)/gi, '<b>$1 $2</b>');
+  // scores (NRS, StrongKids)
+  t = t.replace(/(Score\s*)(\d+)/gi, '$1<b>$2</b>');
+  t = t.replace(/(Pontuação(?:\s+total)?:\s*)(\d+)/gi, '$1<b>$2</b>');
+  // nível de assistência e classificação de risco
+  t = t.replace(/\b(primário|secundário|terciário)\b/gi, '<b>$1</b>');
+  t = t.replace(/\b(Baixo Risco|Médio Risco|Alto Risco)\b/g, '<b>$1</b>');
+  t = t.replace(/\b(sem risco nutricional|com risco nutricional)\b/gi, '<b>$1</b>');
+  // nomes de dieta (só enteral/parenteral, que aparecem soltos fora do marcador V())
+  ['ENTERAL','PARENTERAL'].forEach(d=>{
+    t = t.replace(new RegExp('\\b'+d+'\\b','g'), '<b>'+d+'</b>');
+  });
+  // Braden
+  t = t.replace(/(Braden:?\s*)(sem registro|sem risco|baixo risco|risco moderado|alto risco)/gi, '$1<b>$2</b>');
+  // datas dd/mm/aaaa
+  t = t.replace(/\b(\d{2}\/\d{2}\/\d{4})\b/g, '<b>$1</b>');
+  return t;
 }
 
 function renderOutputBlocks(blocks){
@@ -2485,9 +2673,11 @@ function renderOutputBlocks(blocks){
     const wrap = document.createElement('div');
     wrap.className = 'output-wrap';
     const idDiv = `outBlock_${i}`;
+    const textoEscapado = b.texto.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const textoComNegrito = boldarVariaveis(textoEscapado);
     wrap.innerHTML = `
       ${b.titulo ? `<div class="output-title">${b.titulo}</div>` : ''}
-      <div class="output-block" id="${idDiv}" contenteditable="true" spellcheck="false">${b.texto.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+      <div class="output-block" id="${idDiv}" contenteditable="true" spellcheck="false">${textoComNegrito}</div>
       <button class="output-copybtn" data-target="${idDiv}">Copiar${b.titulo ? ' — ' + b.titulo : ' texto'}</button>
     `;
     container.appendChild(wrap);
@@ -2555,7 +2745,6 @@ function montarExportacao(){
     "Restrições": restr || "",
     "Alergias": alergTudo,
     "Bloqueios": document.getElementById('bloqueios').value.trim(),
-    "Itens sugeridos para bloqueio": itensBloqueioTextoPlano(),
     "Preferências": document.getElementById('sbm_preferencias').value.trim(),
     "VET e Proteína": `VET: ${calc.vet} kcal | PTN: ${calc.ptn} g`,
     "HGT": document.getElementById('hgt').value.trim(),
@@ -3099,6 +3288,21 @@ try{
 renderListaPacientes();
 atualizarContadorDisplay();
 recalc();
+
+/* ---------- botão voltar ao topo ---------- */
+const voltarTopoBtn = document.getElementById('voltarTopoBtn');
+window.addEventListener('scroll', ()=>{
+  voltarTopoBtn.style.display = (window.scrollY > 400) ? '' : 'none';
+});
+voltarTopoBtn.addEventListener('click', ()=>{
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+document.getElementById('irParaExportBtn').addEventListener('click', ()=>{
+  const detalhes = document.getElementById('detalhesExport');
+  detalhes.open = true;
+  detalhes.scrollIntoView({behavior:'smooth', block:'start'});
+});
 </script>
 </body>
 </html>
