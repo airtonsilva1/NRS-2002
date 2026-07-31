@@ -663,7 +663,7 @@
       <select id="temperatura">
         <option value="">Não especificar</option>
         <option value="fria">Fria</option>
-        <option value="temperatura ambiente">Temperatura ambiente</option>
+        <option value="ambiente">Temperatura ambiente</option>
         <option value="quente">Quente</option>
       </select>
 
@@ -824,6 +824,7 @@
       <textarea id="bloqueios" placeholder="ex: embutidos (HAS), preferência por frutas cítricas..."></textarea>
       <div class="hint" id="bloqueiosSiglaHint"></div>
 
+      <div id="secaoBraden">
       <label>Braden</label>
       <select id="braden">
         <option value="sem registro">Sem registro</option>
@@ -832,6 +833,7 @@
         <option value="risco moderado">Risco moderado</option>
         <option value="alto risco">Alto risco</option>
       </select>
+      </div>
 
       <div class="row">
         <div>
@@ -1700,10 +1702,11 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoTneVOCampos').style.display = (isTNE && segVal('segTneVO')==='sim') ? '' : 'none';
   document.getElementById('secaoTneDesmameCampos').style.display = (isTNE && segVal('segTneDesmame')==='sim') ? '' : 'none';
   document.getElementById('secaoDietaPrincipal').style.display = isTNE ? 'none' : '';
-  document.getElementById('secaoPerfilCalorico').style.display = isTNE ? 'none' : '';
-  document.getElementById('secaoTempoInternacao').style.display = isTNE ? 'none' : '';
+  document.getElementById('secaoPerfilCalorico').style.display = (isTNE || isEvolucaoDieta) ? 'none' : '';
+  document.getElementById('secaoTempoInternacao').style.display = (isTNE || isEvolucaoDieta) ? 'none' : '';
+  document.getElementById('secaoBraden').style.display = isEvolucaoDieta ? 'none' : '';
 
-  if(!isTNE){
+  if(!isTNE && !isEvolucaoDieta){
     const dietaVal = document.getElementById('dieta').value;
     document.getElementById('secaoFormulaAdmEnteral').style.display = (dietaVal==='enteral') ? '' : 'none';
     document.getElementById('secaoFormulaAdmParenteral').style.display = (dietaVal==='parenteral') ? '' : 'none';
@@ -1720,6 +1723,10 @@ function atualizarVisibilidadePorTipo(){
       const fParAdm = document.getElementById('admFormulaParenteral').value;
       document.getElementById('admFormulaParenteralOutra').style.display = (fParAdm==='outra_parenteral') ? '' : 'none';
     }
+  } else {
+    document.getElementById('secaoFormulaAdmEnteral').style.display = 'none';
+    document.getElementById('secaoFormulaAdmParenteral').style.display = 'none';
+    document.getElementById('secaoVetEmtnAdm').style.display = 'none';
   }
 
   if(isTNE){
@@ -1979,6 +1986,12 @@ function alergiasSelecionadas(){
   return Array.from(document.querySelectorAll('#chipAlergias input:checked')).map(el=>el.value);
 }
 
+function notaProgressaoDietaMedico(){
+  const medico = document.getElementById('presetMedico').value;
+  if(medico === 'noel') return ' Dieta líquida na 1ª hora, evoluindo para pastosa após 1 hora, conforme conduta do Dr. Noel.';
+  return '';
+}
+
 function frasesBloqueio(){
   const chips = alergiasSelecionadas();
   const alergLivre = document.getElementById('alergias').value.trim();
@@ -2142,7 +2155,7 @@ function descreverFormulaEnteralAdm(){
   if(kcal) kp.push(`${kcal} kcal`);
   if(ptn) kp.push(`${ptn} g de proteína`);
   if(fibra) kp.push(`${fibra} g de fibras`);
-  if(kp.length) partes.push(`sendo ${kp.join(' e ')}`);
+  if(kp.length) partes.push(`sendo ${kp.join(' e ')} (quantidade recebida de acordo com o volume total prescrito)`);
   return partes.join(', ');
 }
 
@@ -2162,7 +2175,7 @@ function descreverFormulaParenteralAdm(){
   const kp = [];
   if(kcal) kp.push(`${kcal} kcal`);
   if(ptn) kp.push(`${ptn} g de proteína`);
-  if(kp.length) partes.push(`possuindo ${kp.join(' e ')}`);
+  if(kp.length) partes.push(`possuindo ${kp.join(' e ')} (quantidade recebida de acordo com o volume total prescrito)`);
   return partes.join(', ');
 }
 
@@ -2217,13 +2230,20 @@ function sugerirExpansaoSiglas(campoId, hintId){
 
 const MEDICOS_PRESET = {
   thiago_lirio: {dieta:'pastosa', temp:'fria', restricoes:['sem_gluten','sem_lactose'], obs:'Conduta habitual do Dr. Thiago Lírio: pastosa, sem glúten, sem lactose, temperatura fria. Confirme no MV que a prescrição desta internação segue o mesmo padrão.'},
-  noel: {dieta:'liquida', temp:'temperatura ambiente', restricoes:[], obs:'Conduta habitual do Dr. Noel: líquida na 1ª hora, evoluindo para pastosa após 1h, temperatura ambiente. Ajuste a dieta manualmente após a 1ª hora. Confirme no MV.'},
+  noel: {dieta:'liquida', temp:'ambiente', restricoes:[], obs:'Conduta habitual do Dr. Noel: líquida na 1ª hora, evoluindo para pastosa após 1h, temperatura ambiente. Ajuste a dieta manualmente após a 1ª hora. Confirme no MV.'},
 };
+
+const TODAS_RESTRICOES_DE_PRESET_MEDICO = ['sem_gluten','sem_lactose'];
 
 document.getElementById('presetMedico').addEventListener('change', function(){
   const preset = MEDICOS_PRESET[this.value];
   const hint = document.getElementById('presetMedicoHint');
-  if(!preset){ hint.textContent = ''; return; }
+  // limpa restrições que possam ter vindo de uma troca de médico anterior
+  TODAS_RESTRICOES_DE_PRESET_MEDICO.forEach(r=>{
+    const chk = document.querySelector(`#chipRestricoes input[value="${r}"]`);
+    if(chk) chk.checked = false;
+  });
+  if(!preset){ hint.textContent = ''; recalc(); salvarRascunho(); return; }
   document.getElementById('dieta').value = preset.dieta;
   document.getElementById('temperatura').value = preset.temp;
   destacarAutoPreenchido('dieta');
@@ -2294,6 +2314,12 @@ function dietaComRestricao(calc){
 
   if(temp) txt += ` em temperatura ${temp}`;
   if(bloqueios) txt += ` e bloqueios: ${bloqueios}`;
+
+  const medico = document.getElementById('presetMedico').value;
+  if(medico==='noel' && document.getElementById('dieta').value==='liquida'){
+    txt += `, com liberação líquida na 1ª hora e evolução para pastosa após 1 hora (conduta Dr. Noel)`;
+  }
+
   return txt;
 }
 
@@ -2384,7 +2410,7 @@ function gerarTexto(){
     } else if(isParenteral){
       txtNrs += `Dieta PARENTERAL: ${descreverFormulaParenteralAdm()}, de acordo com prescrição médica.\n`;
     } else {
-      txtNrs += `Dieta ${V(dietaTxt)}, de acordo com prescrição médica.\n`;
+      txtNrs += `Dieta ${V(dietaTxt)}, de acordo com prescrição médica.${notaProgressaoDietaMedico()}\n`;
     }
     if(isEnteral || isParenteral){
       const vetEmtnAdm = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
@@ -2462,7 +2488,7 @@ function gerarTexto(){
     } else if(isParenteral){
       txtEvolucao += `Planejamento terapêutico: Paciente com dieta parenteral: ${descreverFormulaParenteralAdm()}. Meta calórica segundo EMTN (VET proposto ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal).\n`;
     } else {
-      txtEvolucao += `Planejamento terapêutico: Segue com dieta ${V(dietaTxt)}, de acordo com prescrição médica.\n`;
+      txtEvolucao += `Planejamento terapêutico: Segue com dieta ${V(dietaTxt)}, de acordo com prescrição médica.${notaProgressaoDietaMedico()}\n`;
       txtEvolucao += `VET proposto: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg).\n`;
       txtEvolucao += `Oriento em relação as características da dieta, sobre o consumo exclusivo de alimentos ofertados pelo setor de nutrição e mantenho o setor a disposição.\n`;
     }
@@ -2512,7 +2538,7 @@ function gerarTexto(){
         ? `Planejamento terapêutico: VET proposto: ${calc.vet} kcal e ${calc.ptn} g de proteína. Meta calórica segundo EMTN.\n`
         : `Planejamento terapêutico: Meta calórica mantida conforme EMTN.\n`;
     } else {
-      txt += `Segue com dieta prescrita ${V(dietaTxt.toLowerCase())}, ajustada conforme as preferências do paciente e prescrição médica.\n`;
+      txt += `Segue com dieta prescrita ${V(dietaTxt.toLowerCase())}, ajustada conforme as preferências do paciente e prescrição médica.${notaProgressaoDietaMedico()}\n`;
       txt += calc.vet!==null
         ? `Planejamento terapêutico: VET proposto: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e proteína: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`
         : `Planejamento terapêutico: Mantido plano nutricional já estabelecido, sem alterações.\n`;
@@ -2533,7 +2559,7 @@ function gerarTexto(){
     let txt = `#Pela Nutrição às ${hora}\n`;
     txt += `Em tempo:\n`;
     const liberacaoTxt = horaLiberacao ? ` para ${horaLiberacao}` : '';
-    txt += `Dieta oral liberada: ${V(dietaTxt.toLowerCase())}${liberacaoTxt}, conforme prescrição médica.\n`;
+    txt += `Dieta oral liberada: ${V(dietaTxt.toLowerCase())}${liberacaoTxt}, conforme prescrição médica.${notaProgressaoDietaMedico()}\n`;
     txt += `Oriento paciente e acompanhante em relação as características da dieta.\n`;
     if(funcaoIntestinalVal !== 'nao_avaliado'){ txt += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`; }
     if(hgt){ txt += `HGT: ${hgt}\n`; }
@@ -2567,7 +2593,7 @@ function gerarTexto(){
       const fParOutra = document.getElementById('tneFormulaParenteralOutra').value.trim();
       const nomeFormula = fParVal==='outra_parenteral' ? (fParOutra || '[completar]') : FORMULAS_PARENTERAIS[fParVal].nome;
       const tipoPar = fParVal==='outra_parenteral' ? '' : FORMULAS_PARENTERAIS[fParVal].tipo;
-      const descFormula = tipoPar ? `${nomeFormula} — ${tipoPar}, ${kcalFormula} kcal, ${ptnFormula}g proteína` : `${nomeFormula}, ${kcalFormula} kcal, ${ptnFormula}g proteína`;
+      const descFormula = tipoPar ? `${nomeFormula} — ${tipoPar}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)` : `${nomeFormula}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)`;
 
       txt += `Paciente com dieta parenteral (${descFormula}), via ${VIA_PARENTERAL_TXT[via] || via}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
@@ -2601,7 +2627,7 @@ function gerarTexto(){
       if(totalTxtEnt) descFormula += ` — ${totalTxtEnt}`;
       const fibraFormula = document.getElementById('tneFibraFormula').value;
       const fibraTxt = fibraFormula ? ` e ${fibraFormula} g de fibras` : '';
-      txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g ptn${fibraTxt}${comVO ? ', associada à via oral' : ''}.\n`;
+      txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g ptn${fibraTxt} (quantidade recebida de acordo com o volume total prescrito)${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
@@ -2666,6 +2692,12 @@ function boldarVariaveis(t){
   return t;
 }
 
+function removerPalavrasRepetidas(t){
+  // corrige duplicações do tipo "temperatura temperatura" ou "via via" que possam
+  // escapar por combinação de campos — preserva marcadores de negrito (\u0001/\u0002)
+  return t.replace(/\b(\p{L}+)([ \t]+\1)+\b/giu, '$1');
+}
+
 function renderOutputBlocks(blocks){
   const container = document.getElementById('outputContainer');
   container.innerHTML = '';
@@ -2673,7 +2705,8 @@ function renderOutputBlocks(blocks){
     const wrap = document.createElement('div');
     wrap.className = 'output-wrap';
     const idDiv = `outBlock_${i}`;
-    const textoEscapado = b.texto.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const textoLimpo = removerPalavrasRepetidas(b.texto);
+    const textoEscapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;');
     const textoComNegrito = boldarVariaveis(textoEscapado);
     wrap.innerHTML = `
       ${b.titulo ? `<div class="output-title">${b.titulo}</div>` : ''}
@@ -3277,7 +3310,10 @@ document.getElementById('aplicarPreferenciasBtn').addEventListener('click', ()=>
 });
 
 /* ---------- inicialização ---------- */
-restaurarRascunho();
+// A ferramenta sempre abre limpa, sem restaurar dados de sessão anterior.
+// O rascunho ainda é salvo em segundo plano (proteção contra fechar a aba sem
+// querer no meio de um paciente), mas só é restaurado se você usar
+// "Pacientes salvos" ou "Abrir arquivo" — nunca automaticamente ao abrir.
 aplicarPadroesPessoais();
 
 try{
