@@ -436,7 +436,7 @@
         <div>
           <label class="first">Sexo</label>
           <div class="seg" id="segSexo">
-            <button data-val="F" class="active">Feminino</button>
+            <button data-val="F">Feminino</button>
             <button data-val="M">Masculino</button>
           </div>
         </div>
@@ -1090,7 +1090,10 @@ setupSeg('segQPerda'); setupSeg('segQIngestao'); setupSeg('segQGrave');
 setupSeg('segSkQ1'); setupSeg('segSkQ2'); setupSeg('segSkQ3'); setupSeg('segSkQ4');
 setupSeg('segTneVO');
 setupSeg('segTneDesmame');
-function segVal(id){ return document.querySelector('#'+id+' button.active').dataset.val; }
+function segVal(id){
+  const el = document.querySelector('#'+id+' button.active');
+  return el ? el.dataset.val : null;
+}
 
 /* ---------- perfis clínicos: kcal/kg e ptn/kg padrão ---------- */
 const PERFIS = {
@@ -1635,7 +1638,7 @@ function calcularZPediatrico(){
   const peso = parseFloat(document.getElementById('peso').value);
   const altura = parseFloat(document.getElementById('altura').value);
   const sexo = segVal('segSexo'); // 'F' ou 'M'
-  if(meses===null || meses<0 || meses>60 || !peso || !altura) return null;
+  if(meses===null || meses<0 || meses>60 || !peso || !altura || !sexo) return null;
 
   const mesesArred = Math.round(meses);
   const tabelaPeso = sexo==='M' ? WFA_BOYS : WFA_GIRLS;
@@ -1765,6 +1768,7 @@ function atualizarChecklist(){
   const funcaoIntestinal = document.getElementById('funcaoIntestinal').value;
 
   const obrigatorioPesoAltura = (tipo==='admissao');
+  itens.push([!!segVal('segSexo'), 'Sexo']);
   itens.push([!!peso, `Peso${obrigatorioPesoAltura?'':' (opcional)'}`]);
   itens.push([!!altura, `Altura${obrigatorioPesoAltura?'':' (opcional)'}`]);
   itens.push([braden!=='sem registro', 'Braden']);
@@ -2188,16 +2192,36 @@ function destacarAutoPreenchido(elOrId){
   el.classList.add('auto-flash');
 }
 
+/* Baseado no Siglário oficial da Rede D'Or São Luiz (unidade Morumbi, nov/2021, documento público
+   em wp.rededorsaoluiz.com.br) — não encontrei uma versão publicada especificamente do Copa Star,
+   mas o siglário é padronizado em rede, então os termos abaixo seguem essa referência oficial.
+   Priorizei os termos de nutrição e os mais comuns em HDA/HPP/comorbidades. */
 const ACRONIMOS_MEDICOS = {
-  'HAS':'hipertensão arterial sistêmica', 'DM':'diabetes mellitus', 'DM1':'diabetes mellitus tipo 1',
-  'DM2':'diabetes mellitus tipo 2', 'IRC':'insuficiência renal crônica', 'IRA':'insuficiência renal aguda',
-  'DRC':'doença renal crônica', 'DPOC':'doença pulmonar obstrutiva crônica', 'AVC':'acidente vascular cerebral',
-  'IAM':'infarto agudo do miocárdio', 'ICC':'insuficiência cardíaca congestiva', 'HD':'hemodiálise',
-  'TCE':'traumatismo cranioencefálico', 'TEP':'tromboembolismo pulmonar', 'TVP':'trombose venosa profunda',
-  'ITU':'infecção do trato urinário', 'PA':'pressão arterial', 'FA':'fibrilação atrial',
-  'DLP':'dislipidemia', 'HD.':'hemodiálise', 'ELA':'esclerose lateral amiotrófica',
-  'DM/HAS':'diabetes mellitus e hipertensão arterial sistêmica',
+  // gerais / comorbidades — HDA, HPP, Diagnóstico
+  'HAS':'hipertensão arterial sistêmica', 'DM':'diabete mellitus', 'DM1':'diabete mellitus tipo 1', 'DM2':'diabete mellitus tipo 2', 'DPOC':'doença pulmonar obstrutiva crônica',
+  'AVC':'acidente vascular cerebral', 'AVCI':'acidente vascular cerebral isquêmico', 'AVCH':'acidente vascular cerebral hemorrágico',
+  'IAM':'infarto agudo do miocárdio', 'ICC':'insuficiência cardíaca congestiva', 'ICO':'insuficiência coronariana',
+  'IRC':'insuficiência renal crônica', 'IRA':'insuficiência renal aguda', 'DRC':'doença renal crônica',
+  'LRA':'lesão renal aguda', 'TCE':'traumatismo cranioencefálico', 'TEP':'tromboembolismo pulmonar',
+  'TVP':'trombose venosa profunda', 'ITU':'infecção do trato urinário', 'FA':'fibrilação atrial',
+  'LES':'lúpus eritematoso sistêmico', 'EM':'esclerose múltipla', 'PCR':'parada cardiorrespiratória',
+  'DHE':'distúrbio hidroeletrolítico', 'BCP':'broncopneumonia', 'PNM':'pneumonia', 'PAV':'pneumonia associada à ventilação mecânica',
+  'IRpA':'insuficiência respiratória aguda', 'SRAG':'síndrome respiratória aguda grave', 'ACM':'a critério médico',
+  'CPM':'conforme prescrição médica', 'POI':'pós-operatório imediato', 'POT':'pós-operatório tardio',
+  'BEG':'bom estado geral', 'REG':'regular estado geral', 'LOTE':'lúcido orientado em tempo e espaço',
+  'QP':'queixa principal', 'HD':'hipótese diagnóstica', 'NDN':'nada digno de nota', 'A/e':'a esclarecer',
+  // vias e dispositivos
+  'CVC':'cateter venoso central', 'PICC':'cateter central de inserção periférica', 'AVP':'acesso venoso periférico',
+  'SVD':'sondagem vesical de demora', 'SVA':'sondagem vesical de alívio', 'TQT':'traqueostomia',
+  // nutrição — os mais relevantes pro contexto desta ferramenta
+  'EMTN':'Equipe Multiprofissional de Terapia Nutricional', 'SND':'Serviço de Nutrição e Dietética',
+  'TNE':'terapia nutricional enteral', 'TNO':'terapia nutricional oral', 'NPT':'nutrição parenteral total',
+  'VCT':'valor calórico total', 'VO':'via oral', 'JJ':'jejum', 'SNE':'sonda nasoenteral', 'SNG':'sonda nasogástrica',
+  'SOE':'sonda oroenteral', 'SOG':'sonda orogástrica', 'SNO':'suplemento nutricional oral', 'GTT':'gastrostomia',
+  'BI':'bomba de infusão', 'NRS':'Nutrition Risk Screening', 'MMII':'membros inferiores', 'MMSS':'membros superiores',
 };
+const ACRONIMOS_FONTE_HINT = "Baseado no Siglário oficial da Rede D'Or São Luiz (documento público, unidade Morumbi).";
+
 
 function sugerirExpansaoSiglas(campoId, hintId){
   const campo = document.getElementById(campoId);
@@ -2305,7 +2329,10 @@ function dietaComRestricao(calc){
   if(adaptacoes.length) txt += ` ADAPTADA PARA ${adaptacoes.join(' E ')}`;
 
   const semList = [];
-  manualKeys.filter(k=>RESTRICOES_SEM.includes(k)).forEach(k=>semList.push(RESTRICOES_SEM_TEXTO[k]));
+  manualKeys.filter(k=>RESTRICOES_SEM.includes(k)).forEach(k=>{
+    const termo = RESTRICOES_SEM_TEXTO[k];
+    if(!d.includes(termo)) semList.push(termo); // evita duplicar se a dieta base já contém o termo (ex: LÍQUIDA SEM RESÍDUOS + chip Sem resíduos)
+  });
   chips.forEach(c=>semList.push(c.toUpperCase()));
   if(semList.length) txt += ' SEM ' + semList.join(', SEM ');
 
@@ -2337,6 +2364,17 @@ function calcSemPeso(){
 }
 
 function gerarTexto(){
+  const sexoVal = segVal('segSexo');
+  if(!sexoVal){
+    const segEl = document.getElementById('segSexo');
+    segEl.classList.add('campo-faltante');
+    segEl.scrollIntoView({behavior:'smooth', block:'center'});
+    alert("Selecione o sexo do paciente antes de gerar a nota.");
+    const remover = ()=>{ segEl.classList.remove('campo-faltante'); };
+    segEl.querySelectorAll('button').forEach(b=>b.addEventListener('click', remover, {once:true}));
+    return;
+  }
+
   const tipoNota = segVal('segTipoNota');
   const pesoVal = parseFloat(document.getElementById('peso').value);
   const alturaVal = parseFloat(document.getElementById('altura').value);
@@ -2881,7 +2919,8 @@ function resetTudo(){
   document.getElementById('tneDietaOral').value = 'branda';
   selPerfil.value = 'auto';
 
-  resetSeg('segSexo', 0);
+  // Sexo NÃO é reselecionado automaticamente — precisa ser clicado pelo nutricionista a cada paciente
+  document.getElementById('segSexo').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
   resetSeg('segTipoNota', 0);
   resetSeg('segQPerda', 0);
   resetSeg('segQIngestao', 0);
