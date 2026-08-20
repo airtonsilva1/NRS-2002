@@ -948,6 +948,37 @@
         </div>
       </div>
 
+      <div class="row">
+        <div>
+          <label>Detalhe da função intestinal <span style="font-weight:normal;color:#888;">— opcional</span></label>
+          <input type="text" id="fiDetalhe" placeholder="ex: 2x pastosa">
+        </div>
+        <div>
+          <label>Hemodiálise (volume) <span style="font-weight:normal;color:#888;">— opcional</span></label>
+          <input type="text" id="hemodialise" placeholder="ex: 1800 ml">
+        </div>
+      </div>
+
+      <div class="row" id="secaoRevisitaCampos">
+        <div>
+          <label>Aceitação alimentar</label>
+          <select id="aceitacaoAlimentar">
+            <option value="boa">Boa</option>
+            <option value="moderada">Moderada</option>
+            <option value="baixa">Baixa</option>
+            <option value="nao_avaliada">Não avaliada</option>
+          </select>
+        </div>
+        <div>
+          <label>Dificuldade de deglutição</label>
+          <select id="dificuldadeDeglutica">
+            <option value="nao">Não relata dificuldade</option>
+            <option value="sim">Relata dificuldade</option>
+            <option value="nao_avaliado">Não avaliado</option>
+          </select>
+        </div>
+      </div>
+
       <div id="secaoHoraLiberacao">
       <label>Horário de liberação da dieta <span style="font-weight:normal;color:#888;">— para Evolução de dieta</span></label>
       <input type="text" id="horaLiberacao" placeholder="ex: 13:30h">
@@ -2409,6 +2440,36 @@ const SUPLEMENTOS_CATALOG = {
   'whey_vitafor': { nome: 'Whey Protein Isolado Vitafor Sachê', codigo: 'XX', tipo: 'po', ml: 15, proteina: 14, kcal: 60, HP: 1, HC: 0, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'tracos', para: 'Módulo proteico (enriquecer dieta/preparações)' }
 };
 
+/* ═══ SELEÇÃO DE SUPLEMENTO (checkbox nos cards) ═══
+   Só entra no texto da nota se o nutricionista marcar a caixa. */
+let SUPLEMENTOS_MARCADOS = {};   // { chave: '1x'|'2x'|'3x' }
+
+function caracteristicasSuplemento(s){
+  const c = [];
+  if(s.HP) c.push('hiperproteica');
+  else if(s.NP) c.push('normoproteica');
+  if(s.HC) c.push('hipercalórica');
+  else if(s.NC) c.push('normocalórica');
+  if(s.arginina) c.push('com arginina');
+  return c.length ? c.join(' e ') : 'padrão';
+}
+
+/* Frase pronta para colar após a dieta, no padrão da instituição:
+   "Dieta VO associada a suplementação hiperproteica, 1x ao dia, Nutridrink Compact Protein (...)" */
+function fraseSuplementoSelecionado(prefixo){
+  const chaves = Object.keys(SUPLEMENTOS_MARCADOS);
+  if(chaves.length === 0) return '';
+  const partes = chaves.map(k=>{
+    const s = SUPLEMENTOS_CATALOG[k];
+    if(!s) return null;
+    const freq = SUPLEMENTOS_MARCADOS[k] || '1x';
+    const det = `${s.proteina}g ptn e ${s.kcal} kcal por ${s.ml ? s.ml + (s.tipo==='po'?'g':'ml') : 'porção'}`;
+    return `suplementação ${caracteristicasSuplemento(s)}, ${freq} ao dia, ${s.nome} (${det})`;
+  }).filter(Boolean);
+  if(partes.length === 0) return '';
+  return `${prefixo || 'Dieta VO associada a'} ${partes.join('; associada a ')}.`;
+}
+
 function temRiscoNutricional(){ return nrsTotal() >= 3; }
 function temDesnutricao(){ const peso = parseInt(document.getElementById('peso').value) || 0; const altura = parseInt(document.getElementById('altura').value) || 0; if(!peso || !altura) return false; const imc = peso / Math.pow(altura/100, 2); return imc < 18.5; }
 function temFerida(){ const comorbidades = (document.getElementById('comorbidades').value || '').toLowerCase(); return /ferida|úlcera|lesão|pós-cirurg|ferimento|cicatriz|cicatrização/i.test(comorbidades); }
@@ -2517,6 +2578,10 @@ function gerarSugestoesSuplemento(){
   html += `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px;">`;
   
   opcoes.forEach((sup, idx) => {
+    const chave = Object.keys(SUPLEMENTOS_CATALOG).find(k => SUPLEMENTOS_CATALOG[k] === sup) || '';
+    const marcado = Object.prototype.hasOwnProperty.call(SUPLEMENTOS_MARCADOS, chave);
+    const freqAtual = SUPLEMENTOS_MARCADOS[chave] || '1x';
+    
     let badges = '';
     const B = (txt,bg,fg)=>`<span style="background:${bg}; color:${fg}; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.2px;">${txt}</span> `;
     if(sup.HP) badges += B('Hiperproteico','var(--danger-soft)','var(--danger)');
@@ -2526,16 +2591,23 @@ function gerarSugestoesSuplemento(){
     if(sup.arginina) badges += B('Arginina','#eee6f7','#5b3a8a');
     if(sup.praline) badges += B('Creme/Colher','var(--card-2)','var(--muted)');
     
-    const lac = LS[sup.lactose] || LS.verificar;
-    const sac = LS[sup.sacarose] || LS.verificar;
+    const LSc = LS[sup.lactose] || LS.verificar;
     
-    html += `<div style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); padding:11px;">`;
-    html += `<div style="font-weight:700; color:var(--text); font-size:13px;">${idx+1}º) ${sup.nome}</div>`;
-    html += `<div style="font-size:10.5px; color:var(--faint); margin:3px 0 8px; font-family:var(--font-mono);">cód. ${sup.codigo} • ${sup.tipo}${sup.ml ? ' ' + sup.ml + (sup.tipo==='po' ? 'g' : 'ml') : ''}</div>`;
-    html += `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:8px;">${badges}</div>`;
-    html += `<div style="font-size:11.5px; color:var(--muted);"><b style="color:var(--text);">Proteína</b> ${sup.proteina}g &nbsp;•&nbsp; <b style="color:var(--text);">Energia</b> ${sup.kcal}kcal</div>`;
-    html += `<div style="font-size:11px; color:var(--muted); margin-top:5px;">Lactose: <span style="background:${lac[1]}; color:${lac[2]}; padding:1px 6px; border-radius:999px; font-weight:700;">${lac[0]}</span> &nbsp; Sacarose: <span style="background:${sac[1]}; color:${sac[2]}; padding:1px 6px; border-radius:999px; font-weight:700;">${sac[0]}</span></div>`;
-    html += `<div style="font-size:11px; color:var(--faint); margin-top:6px; font-style:italic;">${sup.para}</div>`;
+    html += `<div style="background:${marcado ? 'var(--accent-soft)' : 'var(--card-2)'}; border:1px solid ${marcado ? 'var(--accent)' : 'var(--border)'}; border-radius:var(--radius-xs); padding:11px;">`;
+    html += `<label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; margin:0;">`;
+    html += `<input type="checkbox" class="sup-check" data-chave="${chave}" ${marcado?'checked':''} style="margin-top:3px; width:16px; height:16px; cursor:pointer; flex-shrink:0;">`;
+    html += `<span style="font-weight:700; color:var(--text); font-size:13px;">${idx+1}º) ${sup.nome}</span>`;
+    html += `</label>`;
+    html += `<div style="font-size:10.5px; color:var(--faint); margin:4px 0 8px 24px; font-family:var(--font-mono);">cód. ${sup.codigo} • ${sup.tipo}${sup.ml ? ' ' + sup.ml + (sup.tipo==='po' ? 'g' : 'ml') : ''}</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:3px; margin:0 0 8px 24px;">${badges}</div>`;
+    html += `<div style="font-size:11.5px; color:var(--muted); margin-left:24px;"><b style="color:var(--text);">Proteína</b> ${sup.proteina}g &nbsp;•&nbsp; <b style="color:var(--text);">Energia</b> ${sup.kcal}kcal</div>`;
+    html += `<div style="font-size:11px; color:var(--muted); margin:5px 0 0 24px;">Lactose: <span style="background:${LSc[1]}; color:${LSc[2]}; padding:1px 6px; border-radius:999px; font-weight:700;">${LSc[0]}</span></div>`;
+    html += `<div style="font-size:11px; color:var(--faint); margin:6px 0 0 24px; font-style:italic;">${sup.para}</div>`;
+    html += `<div style="margin:8px 0 0 24px; font-size:11px; color:var(--muted);">Frequência: <select class="sup-freq" data-chave="${chave}" style="font-size:11px; padding:2px 4px; border:1px solid var(--border); border-radius:4px; background:var(--card); color:var(--text);">
+      <option value="1x" ${freqAtual==='1x'?'selected':''}>1x ao dia</option>
+      <option value="2x" ${freqAtual==='2x'?'selected':''}>2x ao dia</option>
+      <option value="3x" ${freqAtual==='3x'?'selected':''}>3x ao dia</option>
+    </select></div>`;
     html += `</div>`;
   });
   
@@ -2844,85 +2916,167 @@ function gerarTexto(){
       txtNrs += `Conduta Nutricional: ${condutaTxt}`;
     }
 
-    let txtEvolucao = `#Pela nutrição, ${hora}.\n`;
-    txtEvolucao += `Realizo${isJejum? ` admissão. \nEm visita com acompanhante, realizo ${menor?'Strong Kids':'NRS, 2002'}. Peso`:" visita de admissão. Peso"} informado ${peso} kg – IMC ${calc.imc.toFixed(2)} kg/m², Altura informada ${altura} cm.  ${tituloTriagem} apresentou score ${nrsScore} – ${nrsTexto}, conforme resultado ${menor?'do StrongKids':'da NRS-2002'}.\n`;
-    txtEvolucao += `Braden: ${braden}.\n`;
+    /* ===== BLOCO 1: EVOLUÇÃO DE ADMISSÃO (base institucional 2026) ===== */
+    const fiDet = document.getElementById('fiDetalhe').value.trim();
+    const idadeNum = parseInt(document.getElementById('idade').value) || 0;
+    const refIMC = idadeNum >= 60 ? 'IMC do idoso (Lipschitz, 1994)' : 'IMC do adulto';
+    const fraseSup = fraseSuplementoSelecionado('Dieta VO associada a');
+
+    let txtEvolucao = `#Pela Nutrição às ${hora}\n\n`;
+    if(isJejum){
+      txtEvolucao += `Em admissão do paciente${leito?` internado no leito ${leito}`:''}, realizo ${menor?'StrongKids':'NRS-2002'};\n`;
+    } else {
+      txtEvolucao += `Em visita de admissão realizo ${menor?'StrongKids':'NRS-2002'}.\n`;
+    }
+    txtEvolucao += `Peso informado ${peso} kg – IMC ${calc.imc.toFixed(2).replace('.',',')} kg/m², Altura informada ${altura} cm.\n`;
+    txtEvolucao += `${tituloTriagem} apresentou score ${nrsScore} - ${nrsTexto}, conforme resultado ${menor?'do StrongKids':'da NRS-2002'}.\n`;
+    txtEvolucao += `Escala de Braden: ${braden}.\n`;
     txtEvolucao += `${frasesBloqueio()}\n`;
-    txtEvolucao += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`;
+    if(funcaoIntestinalVal === 'nao_avaliado'){
+      txtEvolucao += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`;
+    } else {
+      txtEvolucao += `${FI_ADMISSAO[funcaoIntestinalVal].replace(/\.$/,'')}${fiDet?`, ${fiDet}`:', relatando ser regular'}.\n`;
+    }
     txtEvolucao += `Todas as aversões e preferências relatadas foram registradas para controle da nutrição.\n`;
-    if(isJejum){
-      txtEvolucao += `Planejamento terapêutico: Segue em jejum, até o momento.\n`;
-      txtEvolucao += `VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg) e  ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg)\n`;
-      txtEvolucao += `Oriento em relação aos procedimentos pós liberação da dieta, sobre o consumo exclusivo de alimentos ofertados pelo setor de nutrição e mantenho setor a disposição.\n`;
-      txtEvolucao += `Acompanhantes compreendem e confirmam o entendimento das informações recebidas.\n`;
-    } else if(isEnteral){
-      txtEvolucao += `Planejamento terapêutico: Paciente com dieta enteral: ${descreverFormulaEnteralAdm()}. VET proposto diário pela EMTN ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal. Segue em acompanhamento da nutrição e equipe de EMTN.\n`;
-    } else if(isParenteral){
-      txtEvolucao += `Planejamento terapêutico: Paciente com dieta parenteral: ${descreverFormulaParenteralAdm()}. Meta calórica segundo EMTN (VET proposto ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal).\n`;
-    } else {
-      txtEvolucao += `Planejamento terapêutico: Segue com dieta ${V(dietaTxt)}, de acordo com prescrição médica.${notaProgressaoDietaMedico()}\n`;
-      txtEvolucao += `VET proposto: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg).\n`;
-      txtEvolucao += `Oriento em relação as características da dieta, sobre o consumo exclusivo de alimentos ofertados pelo setor de nutrição e mantenho o setor a disposição.\n`;
-    }
-    txtEvolucao += `Segue classificado como nível de assistência ${calc.nivel}.\n`;
-    txtEvolucao += `Dietoterapia será ajustada aos efeitos colaterais medicamentosos.\n`;
-    txtEvolucao += `Segue em acompanhamento nutricional.`;
 
-    let txtMulti = `#Pela nutrição, ${hora}.\n`;
     if(isJejum){
-      txtMulti += `Planejamento terapêutico: O paciente segue em jejum, até o momento. Oriento os acompanhantes em relação aos procedimentos pós liberação da dieta, em relação ao consumo exclusivo de alimentos ofertados pelo setor de nutrição ao paciente e o consumo dos alimentos do frigobar exclusivo para o acompanhante. Oriento sobre o tempo de entrega das refeições e alimentação dos acompanhantes.\n`;
-      txtMulti += `Mantenho setor a disposição.\n`;
-    } else if(isEnteral){
-      txtMulti += `Paciente com dieta enteral: ${descreverFormulaEnteralAdm()}. VET proposto diário pela EMTN ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal. Segue em acompanhamento da nutrição e equipe de EMTN. Mantenho setor a disposição.\n`;
-    } else if(isParenteral){
-      txtMulti += `Planejamento terapêutico: Paciente com dieta parenteral: ${descreverFormulaParenteralAdm()}, conforme prescrição médica. VET proposto pela EMTN ${document.getElementById('admVetEmtn').value || (calc.vet!==null?calc.vet:'[completar]')} kcal. Mantenho setor a disposição.\n`;
+      txtEvolucao += `Planejamento terapêutico: O paciente segue sem dieta prescrita até o momento.\n`;
+      txtEvolucao += `Planejamento terapêutico: VET proposto diário de ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e proteínas: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`;
+      txtEvolucao += `Oriento quanto jejum para procedimento cirúrgico.\n`;
+      txtEvolucao += `Dietoterapia será ajustada aos efeitos colaterais e interações medicamentosas quando dieta for liberada.\n`;
+      txtEvolucao += `Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
+    } else if(isEnteral || isParenteral){
+      const vetEmtnAdm2 = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
+      txtEvolucao += `Paciente segue recebendo dieta ${isEnteral?'enteral':'parenteral'}: ${isEnteral?descreverFormulaEnteralAdm():descreverFormulaParenteralAdm()}.\n`;
+      txtEvolucao += `Planejamento terapêutico: VET final proposto pela EMTN de ${vetEmtnAdm2} kcal.\n`;
+      txtEvolucao += `Oriento quanto características da dieta liberada, acompanhante compreende as informações prestadas.\n`;
+      txtEvolucao += `Dietoterapia ajustada aos efeitos colaterais e interações medicamentosas. Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     } else {
-      txtMulti += `Planejamento terapêutico: Oriento paciente e acompanhante sobre dieta ${V(dietaTxt.toLowerCase())} prescrita e sobre o consumo exclusivo de alimentos ofertados pelo serviço de nutrição dietética. Oriento sobre o consumo dos alimentos do frigobar exclusivo para o acompanhante. Oriento sobre o tempo de entrega das refeições e alimentação dos acompanhantes. Ambos compreendem e confirmam o entendimento das informações recebidas. Mantenho setor a disposição.\n`;
+      txtEvolucao += `Planejamento terapêutico: O paciente segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())} e conforme preferências.${notaProgressaoDietaMedico()}\n`;
+      if(fraseSup) txtEvolucao += `${fraseSup}\n`;
+      txtEvolucao += `VET PROPOSTO diário: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e proteínas: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`;
+      txtEvolucao += `Oriento quanto características da dieta liberada, paciente e acompanhante compreenderam as informações prestadas.\n`;
+      txtEvolucao += `Dietoterapia ajustada aos efeitos colaterais e interações medicamentosas. Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     }
-    txtMulti += `Oriento paciente e acompanhante em relação ao sistema digital de marcação de cardápios. Ambos compreendem e confirmam o entendimento das informações e mantenho setor à disposição.\n`;
-    txtMulti += `Em caso de dúvidas: 213445-2800 (ramal 2930 e 2956).`;
 
-    blocks.push({titulo:'NRS-2002', texto: txtNrs.trim()});
-    blocks.push({titulo:'Evolução', texto: txtEvolucao.trim()});
-    blocks.push({titulo:'Plano educacional multidisciplinar', texto: txtMulti.trim()});
+    /* ===== BLOCO 2: PLANO EDUCACIONAL (MULTIDISCIPLINAR) ===== */
+    const pronomeAdm = sexoVal === 'M' ? 'o mesmo' : 'a mesma';
+    let tituloMulti, txtMulti = '';
+
+    if(isJejum){
+      tituloMulti = 'Plano educacional (multidisciplinar) em JEJUM';
+      txtMulti += `Oriento paciente e acompanhante quanto jejum a critério médico para procedimento cirúrgico. Oriento quanto marcação da primeira refeição ser realizada exclusivamente com a nutricionista e que a mesma orientará quanto características da dieta prescrita pela equipe médica.\n`;
+      txtMulti += `Planejamento terapêutico: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n\n`;
+      txtMulti += `Oriento paciente quanto a alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento paciente e acompanhante sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
+      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+    } else if(isEnteral){
+      tituloMulti = 'Plano educacional de TNE';
+      const vetEmtnAdm3 = document.getElementById('admVetEmtn').value;
+      txtMulti += `Oriento acompanhante quanto progressão da terapia nutricional enteral e suas características de ${descreverFormulaEnteralAdm()}.\n`;
+      txtMulti += vetEmtnAdm3 ? `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtnAdm3} kcal;\n\n` : `Planejamento terapêutico: será definido VET proposto final conforme EMTN;\n\n`;
+      txtMulti += `Oriento acompanhante quanto a alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
+      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+    } else if(isParenteral){
+      tituloMulti = 'Plano educacional de TNP';
+      const vetEmtnAdm4 = document.getElementById('admVetEmtn').value;
+      txtMulti += `Oriento paciente e acompanhante quanto terapia nutricional parenteral e suas características, ${descreverFormulaParenteralAdm()}.\n`;
+      txtMulti += vetEmtnAdm4 ? `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtnAdm4} kcal.\n\n` : `Planejamento terapêutico: será definido VET proposto final conforme EMTN;\n\n`;
+      txtMulti += `Oriento acompanhante quanto a alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
+      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+    } else {
+      tituloMulti = 'Plano educacional (multidisciplinar) VO liberada';
+      const tempVal = document.getElementById('temperatura').value;
+      const tempTxt = tempVal ? ` em temperatura ${tempVal}` : '';
+      txtMulti += `Oriento paciente e acompanhante quanto início da dieta via oral na consistência ${V(dietaTxt.toLowerCase())}${tempTxt} e oriento quanto suas características.${notaProgressaoDietaMedico()}\n`;
+      if(fraseSup) txtMulti += `${fraseSup}\n`;
+      txtMulti += `Planejamento terapêutico: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n\n`;
+      txtMulti += `Oriento paciente quanto a alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento paciente e acompanhante sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
+      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+    }
+
+    /* ===== BLOCO 3: NRS 2002 / STRONGKIDS ===== */
+    const sufixoNrs = isJejum ? ' - JEJUM' : (isEnteral ? ' - TNE' : (isParenteral ? ' - TNP' : ' - VO liberada'));
+    let txtNrsFinal = `#Pela Nutrição às ${hora}\n\n`;
+    txtNrsFinal += `Paciente ${nrsTexto}, score ${nrsScore} segundo ${menor?'StrongKids':'NRS 2002'};\n\n`;
+    const classifLimpa = calc.classificacao.replace(/\s*\([^)]*\)\s*/g,'').trim().toLowerCase();
+    txtNrsFinal += `Classificado como nível de assistência ${calc.nivel} e ${classifLimpa} segundo ${refIMC};\n\n`;
+    if(isJejum){
+      txtNrsFinal += `Segue em jejum conforme solicitação médica para procedimento cirúrgico;\n\n`;
+    } else if(isEnteral || isParenteral){
+      txtNrsFinal += `Recebendo dieta ${isEnteral?'enteral':'parenteral'}: ${isEnteral?descreverFormulaEnteralAdm():descreverFormulaParenteralAdm()};\n\n`;
+    } else {
+      txtNrsFinal += `Recebendo dieta ${V(dietaTxt.toLowerCase())};\n`;
+      if(fraseSup) txtNrsFinal += `${fraseSup}\n`;
+      txtNrsFinal += `\n`;
+    }
+    if(isEnteral || isParenteral){
+      const vetEmtnNrs = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
+      txtNrsFinal += `Planejamento terapêutico: VET proposto pela EMTN ${vetEmtnNrs} kcal\n\n`;
+    } else {
+      txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal e ${calc.ptn} g de proteína\n\n`;
+    }
+    txtNrsFinal += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}\n\n`;
+    txtNrsFinal += `Segue em acompanhamento nutricional.`;
+
+    if(menor){ txtNrsFinal += `\n\n` + txtNrs.split('\n').slice(6).join('\n'); }
+
+    blocks.push({titulo:'NRS 2002' + sufixoNrs, texto: txtNrsFinal.trim()});
+    blocks.push({titulo:'Evolução de admissão', texto: txtEvolucao.trim()});
+    blocks.push({titulo: tituloMulti, texto: txtMulti.trim()});
   }
 
   /* ---------------- REVISITA / EVOLUÇÃO ---------------- */
   if(tipoNota==='revisita'){
-    let txt = `#Pela nutrição às ${hora}\n`;
+    const fiDetR = document.getElementById('fiDetalhe').value.trim();
+    const hemoR = document.getElementById('hemodialise').value.trim();
+    const aceitR = document.getElementById('aceitacaoAlimentar').value;
+    const deglutR = document.getElementById('dificuldadeDeglutica').value;
+    const fraseSupR = fraseSuplementoSelecionado('Realizo adequações em relação à dieta fornecida, inicio');
+
+    let txt = `#Pela Nutrição às ${hora}\n\n`;
+
     if(isJejum){
-      txt += `Realizo revisita. Paciente${leito?` (leito ${leito})`:""} segue em jejum/dieta zero no momento, sem aceitação alimentar a ser avaliada.\n`;
-      txt += `Planejamento terapêutico: Mantido jejum, até o momento, aguardando liberação de dieta conforme prescrição médica.\n`;
+      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue em jejum/dieta zero no momento, sem aceitação alimentar a ser avaliada.\n\n`;
+      txt += `Planejamento terapêutico: mantido jejum até o momento, aguardando liberação de dieta conforme prescrição médica.\n\n`;
+    } else if(isEnteral || isParenteral){
+      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue recebendo dieta ${isEnteral?'enteral':'parenteral'} conforme prescrição médica.\n\n`;
+      txt += calc.vet!==null
+        ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal e ${calc.ptn} g de proteína.\n\n`
+        : `Planejamento terapêutico: mantido VET/proteína já estabelecido pela EMTN.\n\n`;
     } else {
-      txt += `Realizo revisita. Em conversa com paciente${leito?` (leito ${leito})`:""}, confirmo boa aceitação alimentar.\n`;
-      txt += `Não realizo mudanças na dieta. Reforço orientações em relação as características da dieta prescrita.\n`;
+      txt += `Realizo revisita ao paciente, segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())}.${notaProgressaoDietaMedico()}\n`;
+      if(aceitR !== 'nao_avaliada'){
+        txt += `Em conversa com paciente e acompanhante, confirmo ${aceitR} aceitação alimentar.\n\n`;
+      } else {
+        txt += `Aceitação alimentar não avaliada no momento da visita.\n\n`;
+      }
+      txt += fraseSupR ? `${fraseSupR}\n\n` : `Não realizo adequações na dieta oferecida.\n\n`;
+      if(deglutR === 'nao'){
+        txt += `Não relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n\n`;
+      } else if(deglutR === 'sim'){
+        txt += `Relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n\n`;
+      }
     }
-    if(isJejum){
-      // sem VET/dieta oral a comentar enquanto em jejum
-    } else if(isEnteral){
-      txt += `Segue recebendo dieta enteral, via sonda/GTT, conforme prescrição médica.\n`;
+
+    txt += `Nas últimas 24h:\n`;
+    txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${fiDetR?`, ${fiDetR}`:''};\n`;
+    if(hgt){ txt += `- HGT: ${hgt};\n`; }
+    if(hemoR){ txt += `- Hemodiálise: ${hemoR};\n`; }
+    txt += `\nEscala Braden: ${braden}.\n\n`;
+
+    if(!isJejum && !isEnteral && !isParenteral){
       txt += calc.vet!==null
-        ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`
-        : `Planejamento terapêutico: Mantido VET/proteína já estabelecido pela EMTN.\n`;
-    } else if(isParenteral){
-      txt += `Paciente com dieta parenteral, mantida conforme prescrição médica.\n`;
-      txt += calc.vet!==null
-        ? `Planejamento terapêutico: VET proposto: ${calc.vet} kcal e ${calc.ptn} g de proteína. Meta calórica segundo EMTN.\n`
-        : `Planejamento terapêutico: Meta calórica mantida conforme EMTN.\n`;
-    } else {
-      txt += `Segue com dieta prescrita ${V(dietaTxt.toLowerCase())}, ajustada conforme as preferências do paciente e prescrição médica.${notaProgressaoDietaMedico()}\n`;
-      txt += calc.vet!==null
-        ? `Planejamento terapêutico: VET proposto: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e proteína: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`
-        : `Planejamento terapêutico: Mantido plano nutricional já estabelecido, sem alterações.\n`;
+        ? `Planejamento terapêutico: VET proposto diário: ${calc.vet} kcal. Proteínas ${calc.ptn} g/dia.\n`
+        : `Planejamento terapêutico: mantido plano nutricional já estabelecido, sem alterações.\n`;
     }
-    txt += `Nas últimas 24 horas:\n`;
-    txt += `FI: ${FI_REVISITA[funcaoIntestinalVal]}\n`;
-    if(hgt){ txt += `HGT: ${hgt}\n`; }
-    txt += `Escala Braden: ${braden}\n`;
-    txt += `Nível de assistência ${calc.nivel} e classificado conforme escala Braden.\n`;
-    txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
+    txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n\n`;
     txt += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}\n`;
-    txt += `Segue em acompanhamento nutricional diário.`;
+    txt += `Classificado como nível de assistência ${calc.nivel}, mantendo acompanhamento da nutrição${(isEnteral||isParenteral)?' e da EMTN':''}.`;
+
     blocks.push({titulo:null, texto: txt.trim()});
   }
 
@@ -2988,8 +3142,9 @@ function gerarTexto(){
       }
       txt += `Segue percorrendo ${taxaInfusao} ml/h, totalizando ${volumePrescrito} ml.\n\n`;
       txt += `Nas últimas 24h:\n`;
-      txt += `Função intestinal ${FI_REVISITA[funcaoIntestinalVal]};\n`;
-      txt += `HGT: ${hgt || 'sem registro'};\n`;
+      txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
+      txt += `- HGT: ${hgt || 'sem registro'};\n`;
+      if(document.getElementById('hemodialise').value.trim()){ txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim()};\n`; }
       txt += `Escala Braden: Risco ${bradenTxt} para lesão por pressão.\n\n`;
       txt += `Meta Calórica: segundo EMTN (VET proposto ${vetEmtn} kcal).\n`;
       txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
@@ -3020,14 +3175,30 @@ function gerarTexto(){
       }
       txt += `Planejamento terapêutico: VET proposto diário pela EMTN ${vetEmtn} kcal.\n\n`;
       txt += `Nas últimas 24h:\n`;
-      txt += `-Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% de infusão.\n`;
-      txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}.\n`;
-      txt += `- HGT: ${hgt || '[completar]'};\n\n`;
-      txt += `Risco ${bradenTxt} para lesão, segundo escala de Braden, dieta em evolução.\n\n`;
+      txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito.\n`;
+      txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''}.\n`;
+      txt += `- HGT: ${hgt || '[completar]'};\n`;
+      if(document.getElementById('hemodialise').value.trim()){ txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim()};\n`; }
+      txt += `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em progressão.\n\n`;
       txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
       txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
     }
     blocks.push({titulo:null, texto: txt.trim()});
+
+    /* Plano educacional de TNE / TNP (base institucional 2026) */
+    const pronomeTne = sexoVal === 'M' ? 'o mesmo' : 'a mesma';
+    let txtEduTne = '';
+    if(viaParenteral){
+      txtEduTne += `Oriento paciente e acompanhante quanto terapia nutricional parenteral e suas características, percorrendo em ${taxaInfusao} ml/h (${volumePrescrito} ml/dia), possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína.\n`;
+      txtEduTne += `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtn} kcal.\n\n`;
+    } else {
+      txtEduTne += `Oriento acompanhante quanto progressão da terapia nutricional enteral e suas características, via ${via}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína.\n`;
+      txtEduTne += `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtn} kcal;\n\n`;
+    }
+    txtEduTne += `Oriento acompanhante quanto a alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeTne} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
+    txtEduTne += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
+    txtEduTne += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+    blocks.push({titulo: viaParenteral ? 'Plano educacional de TNP' : 'Plano educacional de TNE', texto: txtEduTne.trim()});
   }
 
   // Adicionar sugestão de suplementação se houver risco nutricional
@@ -3036,11 +3207,17 @@ function gerarTexto(){
     blocks.push(suplementoBlock);
   }
 
+  const scrollAntes = window.scrollY;
+  const jaTinhaNota = document.querySelector('#outputContainer .output-block');
   renderOutputBlocks(blocks);
   salvarRascunho();
   incrementarContador();
-  const outputEl = document.getElementById('outputContainer');
-  if(outputEl) outputEl.scrollIntoView({behavior:'smooth', block:'start'});
+  if(jaTinhaNota){
+    window.scrollTo({top: scrollAntes});
+  } else {
+    const outputEl = document.getElementById('outputContainer');
+    if(outputEl) outputEl.scrollIntoView({behavior:'smooth', block:'start'});
+  }
 }
 
 function marcarCampoFaltante(id){
@@ -3101,7 +3278,8 @@ function renderOutputBlocks(blocks){
     if(b.isHTML){
       contentHTML = b.html;
     } else {
-      const textoLimpo = removerPalavrasRepetidas(b.texto);
+      let textoLimpo = removerPalavrasRepetidas(b.texto);
+      textoLimpo = textoLimpo.replace(/(\d)\.(\d)/g, '$1,$2');   // decimais no padrão pt-BR
       const textoEscapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;');
       const textoComNegrito = boldarVariaveis(textoEscapado);
       contentHTML = textoComNegrito;
@@ -3114,6 +3292,30 @@ function renderOutputBlocks(blocks){
     `;
     container.appendChild(wrap);
   });
+  /* Checkbox de suplemento: marca/desmarca e regenera a nota já com (ou sem) o suplemento */
+  container.querySelectorAll('.sup-check').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const k = chk.dataset.chave;
+      if(!k) return;
+      if(chk.checked){
+        const sel = container.querySelector(`.sup-freq[data-chave="${k}"]`);
+        SUPLEMENTOS_MARCADOS[k] = sel ? sel.value : '1x';
+      } else {
+        delete SUPLEMENTOS_MARCADOS[k];
+      }
+      gerarTexto();
+    });
+  });
+  container.querySelectorAll('.sup-freq').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const k = sel.dataset.chave;
+      if(k && Object.prototype.hasOwnProperty.call(SUPLEMENTOS_MARCADOS, k)){
+        SUPLEMENTOS_MARCADOS[k] = sel.value;
+        gerarTexto();
+      }
+    });
+  });
+
   container.querySelectorAll('.output-copybtn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const el = document.getElementById(btn.dataset.target);
@@ -3357,6 +3559,7 @@ function resetTudo(){
   document.getElementById('andar').value = '2';
   document.getElementById('andarAutoHint').style.display = 'none';
   document.getElementById('dieta').value = 'branda';
+  SUPLEMENTOS_MARCADOS = {};
   document.querySelectorAll('#chipRestricoes input[type=checkbox]').forEach(cb=>cb.checked=false);
   document.getElementById('temperatura').value = '';
   document.getElementById('braden').value = 'sem registro';
@@ -3405,7 +3608,7 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
    salvar/abrir arquivo).
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
-  'hgt','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
+  'hgt','fiDetalhe','hemodialise','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
   'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
   'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
   'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
