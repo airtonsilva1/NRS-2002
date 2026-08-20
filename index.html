@@ -1088,7 +1088,10 @@
         <div style="background:var(--card); color:var(--text); margin:24px auto; padding:22px; border-radius:var(--radius); max-width:1250px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-pop); border:1px solid var(--border); font-family:var(--font-body);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:2px solid var(--accent); padding-bottom:12px;">
             <h2 style="margin:0; color:var(--accent-dark); font-size:18px;">📋 Catálogo de Suplementos Orais — Copa Star</h2>
-            <button id="fecharCatalogo" style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); font-size:18px; cursor:pointer; width:32px; height:32px; color:var(--muted);">✕</button>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button id="imprimirCatalogo" style="background:var(--accent); color:#fff; border:none; border-radius:var(--radius-xs); font-size:12.5px; font-weight:700; cursor:pointer; padding:8px 14px; font-family:var(--font-body);">🖨️ Imprimir catálogo</button>
+              <button id="fecharCatalogo" style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); font-size:18px; cursor:pointer; width:32px; height:32px; color:var(--muted);">✕</button>
+            </div>
           </div>
           <div style="font-size:11.5px; color:var(--faint); margin-bottom:14px;">Somente suplementos de uso oral — dietas enterais não estão listadas. A coluna Lactose orienta dietas sem resíduos e isentas de lactose (conferir sempre o rótulo do lote).</div>
           <div style="overflow-x:auto;">
@@ -3159,6 +3162,62 @@ function abrirCatalogoCatalogo(){
 
 document.getElementById('catalogoSupBtn').addEventListener('click', abrirCatalogoCatalogo);
 document.getElementById('fecharCatalogo').addEventListener('click', ()=>{ document.getElementById('catalogoModal').style.display = 'none'; });
+
+/* Imprimir catálogo: abre janela limpa só com a tabela (paisagem, cores fixas para papel) */
+document.getElementById('imprimirCatalogo').addEventListener('click', ()=>{
+  const LS_TXT = { contem: 'Contém', isento: 'Isento', tracos: 'Traços', verificar: 'Verificar' };
+  const lista = Object.values(SUPLEMENTOS_CATALOG).slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  
+  let linhas = '';
+  lista.forEach((sup, idx) => {
+    const apres = sup.tipo + (sup.ml ? ' ' + sup.ml + (sup.tipo==='po' ? 'g' : 'ml') : '');
+    const chk = v => v ? '✓' : '—';
+    linhas += `<tr style="background:${idx % 2 === 0 ? '#f5f5f5' : '#fff'};">
+      <td style="font-weight:bold;">${sup.nome}</td>
+      <td style="text-align:center;">${apres}</td>
+      <td style="text-align:center; font-weight:bold;">${chk(sup.HP)}</td>
+      <td style="text-align:center; font-weight:bold;">${chk(sup.HC)}</td>
+      <td style="text-align:center; font-weight:bold;">${chk(sup.NP)}</td>
+      <td style="text-align:center; font-weight:bold;">${chk(sup.NC)}</td>
+      <td style="text-align:center; font-weight:bold;">${chk(sup.arginina)}</td>
+      <td style="text-align:center;">${LS_TXT[sup.lactose] || 'Verificar'}</td>
+      <td>${sup.para}</td>
+    </tr>`;
+  });
+  
+  const docHtml = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>Catálogo de Suplementos Orais — Copa Star</title>
+  <style>
+    @page{ size: A4 landscape; margin: 12mm; }
+    body{ font-family:"Segoe UI",Arial,sans-serif; color:#1b2733; margin:0; }
+    h1{ font-size:16px; color:#0b5a70; border-bottom:2px solid #0f7490; padding-bottom:6px; margin:0 0 4px; }
+    .sub{ font-size:10px; color:#666; margin-bottom:10px; }
+    table{ width:100%; border-collapse:collapse; font-size:10px; }
+    th{ background:#e3f1f5; color:#0b5a70; border:1px solid #999; padding:5px; }
+    td{ border:1px solid #999; padding:4px 5px; }
+    .rodape{ font-size:9px; color:#888; margin-top:8px; }
+  </style></head><body>
+  <h1>📋 Catálogo de Suplementos Orais — Copa Star</h1>
+  <div class="sub">Somente suplementos de uso oral — dietas enterais não listadas. Coluna Lactose orienta dietas sem resíduos e isentas de lactose (conferir sempre o rótulo do lote). Impresso em ${hoje}.</div>
+  <table>
+    <thead><tr>
+      <th style="text-align:left;">PRODUTO</th><th>APRESENTAÇÃO</th><th>HIPER-<br/>PROTEICO</th><th>HIPER-<br/>CALÓRICO</th><th>NORMO-<br/>PROTEICO</th><th>NORMO-<br/>CALÓRICO</th><th>ARGININA</th><th>LACTOSE</th><th style="text-align:left;">INDICAÇÃO</th>
+    </tr></thead>
+    <tbody>${linhas}</tbody>
+  </table>
+  <div class="rodape">Nutricionista Airton Brendon — CRN4 22102218 • Hospital Copa Star</div>
+  <script>window.onload = ()=>{ window.print(); };<\/script>
+  </body></html>`;
+  
+  const win = window.open('', '_blank');
+  if(win){
+    win.document.write(docHtml);
+    win.document.close();
+  } else {
+    alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este arquivo e tente novamente.');
+  }
+});
 document.getElementById('catalogoModal').addEventListener('click', (e)=>{ if(e.target.id === 'catalogoModal') document.getElementById('catalogoModal').style.display = 'none'; });
 
 document.getElementById('gerarBtn').addEventListener('click', gerarTexto);
