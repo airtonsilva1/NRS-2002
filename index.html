@@ -518,6 +518,7 @@
       <button id="temaBtn" type="button" class="mini-btn" title="Alternar modo escuro">🌓 Tema</button>
       <button id="fonteBtn" type="button" class="mini-btn" title="Aumentar fonte (modo celular)">🔤 Fonte</button>
       <button id="imprimirBtn" type="button" class="mini-btn" title="Imprimir ou salvar como PDF">🖨️ Imprimir/PDF</button>
+      <button id="catalogoSupBtn" type="button" class="mini-btn" title="Ver catálogo de suplementos da casa">📋 Catálogo de Suplementos</button>
       <button id="desfazerLimparBtn" type="button" class="mini-btn" style="display:none;background:#fff3cd;border-color:#e0c26a;">↩ Desfazer limpeza</button>
       <button id="limparBtn" type="button" style="background:#fff;border:1px solid #c33;color:#c33;font-size:12.5px;font-weight:bold;padding:8px 14px;border-radius:3px;cursor:pointer;">Limpar dados</button>
       <div class="clock">
@@ -1082,6 +1083,35 @@
     <!-- ===================== OUTPUT ===================== -->
     <div class="panel">
       <h2>Texto pronto para copiar</h2>
+      <!-- MODAL CATÁLOGO DE SUPLEMENTOS -->
+      <div id="catalogoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(16,32,48,0.45); z-index:9999; overflow:auto; backdrop-filter:blur(2px);">
+        <div style="background:var(--card); color:var(--text); margin:24px auto; padding:22px; border-radius:var(--radius); max-width:1250px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-pop); border:1px solid var(--border); font-family:var(--font-body);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:2px solid var(--accent); padding-bottom:12px;">
+            <h2 style="margin:0; color:var(--accent-dark); font-size:18px;">📋 Catálogo de Suplementos Orais — Copa Star</h2>
+            <button id="fecharCatalogo" style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); font-size:18px; cursor:pointer; width:32px; height:32px; color:var(--muted);">✕</button>
+          </div>
+          <div style="font-size:11.5px; color:var(--faint); margin-bottom:14px;">Somente suplementos de uso oral — dietas enterais não estão listadas. A coluna Lactose orienta dietas sem resíduos e isentas de lactose (conferir sempre o rótulo do lote).</div>
+          <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:880px;">
+            <thead>
+              <tr style="background:var(--accent-soft); border-bottom:2px solid var(--accent);">
+                <th style="border:1px solid var(--border); padding:9px; text-align:left; color:var(--accent-dark);">PRODUTO</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--accent-dark);">APRESENTAÇÃO</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--danger);">HIPER<br/>PROTEICO</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:#8a6d1a;">HIPER<br/>CALÓRICO</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--accent-dark);">NORMO<br/>PROTEICO</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--ok);">NORMO<br/>CALÓRICO</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:#5b3a8a;">ARGININA</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--accent-dark);">LACTOSE</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:left; color:var(--accent-dark);">INDICAÇÃO</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaCatalogo"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
       <div id="outputContainer"><div style="color:#999;font-family:Arial,sans-serif;font-style:italic;font-size:13px;padding:14px;border:1px dashed var(--border);border-radius:3px;">O texto pronto aparecerá aqui após clicar em "Gerar nota".</div></div>
       <div class="hint" style="margin-top:2px;margin-bottom:6px;">Cada caixa é editável — ajuste à vontade antes de copiar.</div>
       <button class="btn copy" id="copyTudoBtn" style="background:#3c8f4a;">Copiar tudo</button>
@@ -2348,7 +2378,184 @@ const ACRONIMOS_FONTE_HINT = "Baseado no Siglário oficial da Rede D'Or São Lui
    proteger a maioria dos casos, manter a ordem é mais seguro. */
 const SIGLAS_ORDENADAS = Object.keys(ACRONIMOS_MEDICOS).sort((a,b)=>b.length-a.length);
 
-/* Expande TODAS as siglas conhecidas de um texto livre para o nome completo —
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUPLEMENTAÇÃO INTELIGENTE — COPA STAR
+   NORMOCALORICO (~200kcal) | NORMOPROTEICO (8-10g) | HIPERPROTEICO (≥12g) | HIPERCALORICO (≥300kcal)
+   NUNCA hipercalórico para diabético!
+   Sempre 4 opções, em ordem de preferência
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SUPLEMENTOS_CATALOG = {
+  /* SOMENTE SUPLEMENTOS ORAIS — dietas enterais NÃO entram aqui.
+     Lactose confirmada nos sites dos fabricantes (ago/2026); 'verificar' = conferir rótulo do lote. */
+  'cubitan': { nome: 'Cubitan Baunilha', codigo: '414219', tipo: 'bebida', ml: 200, proteina: 10.2, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 1, praline: 0, lactose: 'contem', para: 'Cicatrização (Arg+Zn)' },
+  'diasip': { nome: 'Diasip Baunilha', codigo: '544605', tipo: 'bebida', ml: 200, proteina: 9, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Diabetes (IG baixo)' },
+  'fresubin_creme': { nome: 'Fresubin Creme (Praline ou Frutas da Floresta)', codigo: '1015141', tipo: 'creme', ml: 125, proteina: 12.5, kcal: 187, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 1, lactose: 'contem', para: 'Disfagia (colher; 2 sabores)' },
+  'fresubin_32': { nome: 'Fresubin 3.2kcal Baunilha', codigo: '1021649', tipo: 'bebida', ml: 125, proteina: 10, kcal: 400, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Desnutrição severa (máx. kcal/volume)' },
+  'fresubin_jucy': { nome: 'Fresubin Jucy Drink Maçã', codigo: '15035', tipo: 'bebida', ml: 200, proteina: 8, kcal: 300, HP: 0, HC: 1, NP: 1, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Sem lactose e sem gordura (clarificado)' },
+  'gan': { nome: 'GAN Cicatrização Sachê', codigo: '1021918', tipo: 'po', ml: 35, proteina: 9, kcal: 150, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 1, praline: 0, lactose: 'verificar', para: 'Cicatrização concentrada' },
+  'glucerna': { nome: 'Glucerna SR Baunilha', codigo: '1025776', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes (IG baixo)' },
+  'impact': { nome: 'Impact Baunilha', codigo: '1030796', tipo: 'bebida', ml: 200, proteina: 13, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 0, praline: 0, lactose: 'isento', para: 'Cicatrização / imunonutrição perioperatória' },
+  'novasource_ren': { nome: 'Novasource REN Baunilha', codigo: '1032597', tipo: 'bebida', ml: 200, proteina: 9.1, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'IRC' },
+  'nutren_control': { nome: 'Nutren Control Baunilha', codigo: '1036755', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes (IG baixo, sem lactose)' },
+  'nutren_senior': { nome: 'Nutren Senior Pronto para Beber', codigo: 'XX', tipo: 'bebida', ml: 200, proteina: 14, kcal: 250, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Idosos: sarcopenia (Ca + Vit D + proteína)' },
+  'nutri_renal': { nome: 'Nutri Renal Baunilha', codigo: '1027930', tipo: 'bebida', ml: 200, proteina: 8.3, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'IRC (sem lactose)' },
+  'nutridrink_compact': { nome: 'Nutridrink Compact (Capuccino/Chocolate/Morango)', codigo: '725/16102/16107', tipo: 'bebida', ml: 125, proteina: 12, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Alto risco, volume reduzido' },
+  'nutridrink_compact_protein': { nome: 'Nutridrink Compact Protein', codigo: '21816', tipo: 'bebida', ml: 125, proteina: 18, kcal: 306, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Alto risco (máx. proteína/volume)' },
+  'nutridrink_po_max': { nome: 'Nutridrink Pó Max (Protein)', codigo: 'XX', tipo: 'po', ml: 0, proteina: 15, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Alto risco (pó, versátil, sem lactose)' },
+  'whey_vitafor': { nome: 'Whey Protein Isolado Vitafor Sachê', codigo: 'XX', tipo: 'po', ml: 15, proteina: 14, kcal: 60, HP: 1, HC: 0, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'tracos', para: 'Módulo proteico (enriquecer dieta/preparações)' }
+};
+
+function temRiscoNutricional(){ return nrsTotal() >= 3; }
+function temDesnutricao(){ const peso = parseInt(document.getElementById('peso').value) || 0; const altura = parseInt(document.getElementById('altura').value) || 0; if(!peso || !altura) return false; const imc = peso / Math.pow(altura/100, 2); return imc < 18.5; }
+function temFerida(){ const comorbidades = (document.getElementById('comorbidades').value || '').toLowerCase(); return /ferida|úlcera|lesão|pós-cirurg|ferimento|cicatriz|cicatrização/i.test(comorbidades); }
+function temDisfagia(){ const restricoes = restricoesSelecionadas(); const comorbidades = (document.getElementById('comorbidades').value || '').toLowerCase(); const dieta = document.getElementById('dieta').value; return restricoes.includes('branda_disfagia') || /disfagia|disfágico|espessad|pastosa|semilíquida/i.test(comorbidades) || dieta === 'pastosa' || dieta === 'semiliquida'; }
+
+function gerarSugestoesSuplemento(){
+  const temRN = temRiscoNutricional();
+  const temDesnut = temDesnutricao();
+  const temFer = temFerida();
+  const temDisf = temDisfagia();
+  const restricoes = restricoesSelecionadas();
+  const ehDiabetico = restricoes.includes('hipoglicidica');
+  const ehRenal = restricoes.includes('irc') || restricoes.includes('irc_hd');
+  const semLactose = restricoes.includes('sem_lactose') || restricoes.includes('Lactose');
+  const semResiduos = restricoes.includes('sem_residuos');
+  const semSacarose = restricoes.includes('sem_sacarose');
+  const ehIdoso = (parseInt(document.getElementById('idade').value) || 0) >= 60;
+  
+  if(!temRN && !temDesnut && !temFer && !temDisf) return null;
+  
+  let opcoes = [];
+  let titulo = '';
+  let avisos = [];
+  
+  /* Ordem de decisão: RENAL → DIABETES → DISFAGIA → FERIDA → DESNUTRIÇÃO → RISCO GERAL */
+  
+  if(ehRenal){
+    opcoes = [ SUPLEMENTOS_CATALOG.nutri_renal, SUPLEMENTOS_CATALOG.novasource_ren ];
+    titulo = 'Suplementação — Insuficiência Renal (proteína e eletrólitos controlados)';
+    if(temFer) avisos.push('Renal com ferida: discutir com EMTN antes de associar fórmula de cicatrização (carga proteica).');
+    if(temDisf) avisos.push('Renal com disfagia: associar espessante Resource Thicken Up Clear (cód. 9881) à fórmula renal, na consistência prescrita pela fonoaudiologia.');
+  }
+  else if(ehDiabetico){
+    opcoes = [ SUPLEMENTOS_CATALOG.diasip, SUPLEMENTOS_CATALOG.glucerna, SUPLEMENTOS_CATALOG.nutren_control ];
+    titulo = 'Suplementação — Diabetes (normocalórico, IG baixo; nunca hipercalórico)';
+    if(temFer){
+      opcoes = [ SUPLEMENTOS_CATALOG.diasip, SUPLEMENTOS_CATALOG.glucerna, SUPLEMENTOS_CATALOG.cubitan, SUPLEMENTOS_CATALOG.impact ];
+      titulo = 'Suplementação — Diabetes com Ferida (normocalórico + cicatrização)';
+      avisos.push('Cubitan/Impact são normocalóricos e compatíveis; Impact é isento de sacarose e lactose. Monitorar glicemia capilar.');
+    }
+    if(temDisf) avisos.push('Diabético com disfagia: associar espessante Resource Thicken Up Clear (cód. 9881) à fórmula diabética.');
+    if(temDesnut) avisos.push('Diabético desnutrido: manter normocalórico com maior fracionamento; Whey Vitafor sachê pode enriquecer preparações sem carga glicídica.');
+  }
+  else if(temDisf){
+    opcoes = [ SUPLEMENTOS_CATALOG.fresubin_creme ];
+    if(ehIdoso) opcoes.push(SUPLEMENTOS_CATALOG.nutren_senior);
+    titulo = 'Suplementação — Disfagia (consistência controlada)';
+    avisos.push('Fresubin Creme disponível em 2 sabores: Praline e Frutas da Floresta.');
+    avisos.push('Alternativa: suplemento líquido + espessante Resource Thicken Up Clear (cód. 9881) na consistência prescrita pela fonoaudiologia.');
+  }
+  else if(temFer){
+    opcoes = [ SUPLEMENTOS_CATALOG.cubitan, SUPLEMENTOS_CATALOG.impact, SUPLEMENTOS_CATALOG.gan ];
+    titulo = 'Suplementação — Cicatrização (arginina + zinco)';
+    if(temDesnut){
+      opcoes.push(SUPLEMENTOS_CATALOG.whey_vitafor);
+      avisos.push('Ferida + desnutrição: Whey Vitafor sachê como módulo proteico adicional nas refeições.');
+    }
+  }
+  else if(temDesnut){
+    if(ehIdoso){
+      opcoes = [ SUPLEMENTOS_CATALOG.nutridrink_compact_protein, SUPLEMENTOS_CATALOG.nutren_senior, SUPLEMENTOS_CATALOG.fresubin_32, SUPLEMENTOS_CATALOG.whey_vitafor ];
+    } else {
+      opcoes = [ SUPLEMENTOS_CATALOG.nutridrink_compact_protein, SUPLEMENTOS_CATALOG.fresubin_32, SUPLEMENTOS_CATALOG.nutridrink_compact, SUPLEMENTOS_CATALOG.whey_vitafor ];
+    }
+    titulo = temRN ? 'Suplementação — Desnutrição Severa (hipercalórico + hiperproteico)' : 'Suplementação — Desnutrição (hipercalórico + hiperproteico)';
+  }
+  else if(temRN){
+    if(ehIdoso){
+      opcoes = [ SUPLEMENTOS_CATALOG.nutridrink_compact_protein, SUPLEMENTOS_CATALOG.nutren_senior, SUPLEMENTOS_CATALOG.nutridrink_po_max, SUPLEMENTOS_CATALOG.nutridrink_compact ];
+    } else {
+      opcoes = [ SUPLEMENTOS_CATALOG.nutridrink_compact_protein, SUPLEMENTOS_CATALOG.nutridrink_po_max, SUPLEMENTOS_CATALOG.nutridrink_compact, SUPLEMENTOS_CATALOG.fresubin_32 ];
+    }
+    titulo = 'Suplementação — Risco Nutricional (hipercalórico + hiperproteico)';
+  }
+  
+  /* ═══ FILTROS DE SEGURANÇA (valem para todos os caminhos) ═══ */
+  if(ehDiabetico){
+    opcoes = opcoes.filter(s => s && !s.HC);
+    if(opcoes.length === 0) opcoes = [ SUPLEMENTOS_CATALOG.diasip, SUPLEMENTOS_CATALOG.glucerna, SUPLEMENTOS_CATALOG.nutren_control ];
+  }
+  if(semLactose || semResiduos){
+    const filtradas = opcoes.filter(s => s && s.lactose === 'isento');
+    if(filtradas.length > 0){
+      opcoes = filtradas;
+      avisos.push('Dieta ' + (semResiduos ? 'sem resíduos' : 'sem lactose') + ': exibindo apenas opções isentas de lactose (confirmadas nos fabricantes).');
+    } else {
+      avisos.push('⚠️ Dieta ' + (semResiduos ? 'sem resíduos' : 'sem lactose') + ': nenhuma opção da categoria é isenta de lactose — alternativas isentas: Impact, Nutridrink Compact/Protein, Nutridrink Pó Max, Nutren Senior, Fresubin Jucy. Discutir substituição com a EMTN.');
+      if(!ehDiabetico && !ehRenal){
+        if(temFer) opcoes = [ SUPLEMENTOS_CATALOG.impact ];
+        else opcoes.push(SUPLEMENTOS_CATALOG.fresubin_jucy);
+      }
+    }
+  }
+  if(semSacarose){
+    avisos.push('Dieta sem sacarose: Impact, Nutri Renal e as fórmulas para diabetes (Diasip, Glucerna, Nutren Control) são isentas de sacarose; conferir rótulo das demais.');
+  }
+  
+  opcoes = opcoes.filter(Boolean).slice(0,4);
+  if(opcoes.length === 0) return null;
+  
+  const LS = { contem: ['Contém','var(--danger-soft)','var(--danger)'], isento: ['Isento','var(--accent-soft)','var(--ok)'], tracos: ['Traços','var(--warn-bg)','#8a6d1a'], verificar: ['Verificar','var(--card-2)','var(--muted)'] };
+  
+  let html = `<div class="sup-box" style="margin-top:18px; background:var(--card); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius-sm); padding:16px; font-family:var(--font-body);">`;
+  html += `<div style="font-weight:700; color:var(--accent-dark); font-size:14.5px; margin-bottom:2px;">💊 ${titulo}</div>`;
+  html += `<div style="font-size:11.5px; color:var(--faint); margin-bottom:12px;">Opções em ordem de preferência (1º = primeira escolha) • uso oral exclusivo — dietas enterais não são listadas aqui</div>`;
+  html += `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px;">`;
+  
+  opcoes.forEach((sup, idx) => {
+    let badges = '';
+    const B = (txt,bg,fg)=>`<span style="background:${bg}; color:${fg}; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.2px;">${txt}</span> `;
+    if(sup.HP) badges += B('Hiperproteico','var(--danger-soft)','var(--danger)');
+    if(sup.HC) badges += B('Hipercalórico','var(--warn-bg)','#8a6d1a');
+    if(sup.NP) badges += B('Normoproteico','var(--accent-soft)','var(--accent-dark)');
+    if(sup.NC) badges += B('Normocalórico','var(--accent-soft)','var(--accent-dark)');
+    if(sup.arginina) badges += B('Arginina','#eee6f7','#5b3a8a');
+    if(sup.praline) badges += B('Creme/Colher','var(--card-2)','var(--muted)');
+    
+    const lac = LS[sup.lactose] || LS.verificar;
+    const sac = LS[sup.sacarose] || LS.verificar;
+    
+    html += `<div style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); padding:11px;">`;
+    html += `<div style="font-weight:700; color:var(--text); font-size:13px;">${idx+1}º) ${sup.nome}</div>`;
+    html += `<div style="font-size:10.5px; color:var(--faint); margin:3px 0 8px; font-family:var(--font-mono);">cód. ${sup.codigo} • ${sup.tipo}${sup.ml ? ' ' + sup.ml + (sup.tipo==='po' ? 'g' : 'ml') : ''}</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:8px;">${badges}</div>`;
+    html += `<div style="font-size:11.5px; color:var(--muted);"><b style="color:var(--text);">Proteína</b> ${sup.proteina}g &nbsp;•&nbsp; <b style="color:var(--text);">Energia</b> ${sup.kcal}kcal</div>`;
+    html += `<div style="font-size:11px; color:var(--muted); margin-top:5px;">Lactose: <span style="background:${lac[1]}; color:${lac[2]}; padding:1px 6px; border-radius:999px; font-weight:700;">${lac[0]}</span> &nbsp; Sacarose: <span style="background:${sac[1]}; color:${sac[2]}; padding:1px 6px; border-radius:999px; font-weight:700;">${sac[0]}</span></div>`;
+    html += `<div style="font-size:11px; color:var(--faint); margin-top:6px; font-style:italic;">${sup.para}</div>`;
+    html += `</div>`;
+  });
+  
+  html += `</div>`;
+  
+  if(avisos.length > 0){
+    html += `<div style="background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:var(--radius-xs); padding:9px 12px; margin-top:11px; font-size:12px; color:var(--text); line-height:1.55;">`;
+    avisos.forEach(a => { html += `⚠️ ${a}<br/>`; });
+    html += `</div>`;
+  }
+  
+  html += `<div style="margin-top:14px; border-top:1px dashed var(--border); padding-top:12px;">`;
+  html += `<div style="font-weight:700; color:var(--ok); font-size:13px; margin-bottom:8px;">📋 Cronograma de acompanhamento</div>`;
+  const sem = (n, t, itens) => `<div style="display:flex; align-items:flex-start; margin-bottom:9px;"><span style="background:var(--ok); color:#fff; border-radius:50%; min-width:19px; height:19px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px; margin-right:9px; margin-top:1px;">${n}</span><div style="font-size:12px; color:var(--muted); line-height:1.5;"><b style="color:var(--text);">${t}</b><br/>${itens}</div></div>`;
+  html += sem(0, 'Semana 0 — Início', 'Confirmar NRS-2002 e necessidades • iniciar dose recomendada • orientar oferta (temperatura, fracionamento)');
+  html += sem(1, 'Semana 1 — Tolerância', 'Avaliar tolerância GI • registrar adesão (% consumido) • ajustar volume/frequência');
+  html += sem(2, 'Semana 2 — Reavaliação', 'Aferir peso e ingestão • reaplicar NRS-2002 • ajustar plano conforme resposta');
+  html += `</div></div>`;
+  
+  return { titulo: null, html: html, isHTML: true };
+}
+
+/* Expande TODAS as siglas conhecidas de um texto livre para o nome completo — conhecidas de um texto livre para o nome completo —
    usado direto na hora de montar o texto final da nota, então nunca aparece
    abreviado no que é colado no MV/SBM Tech, mesmo que o nutricionista tenha
    digitado "HAS, DM2" no campo. Não depende de clique em nenhum botão. */
@@ -2820,6 +3027,12 @@ function gerarTexto(){
     blocks.push({titulo:null, texto: txt.trim()});
   }
 
+  // Adicionar sugestão de suplementação se houver risco nutricional
+  const suplementoBlock = gerarSugestoesSuplemento();
+  if(suplementoBlock){
+    blocks.push(suplementoBlock);
+  }
+
   renderOutputBlocks(blocks);
   salvarRascunho();
   incrementarContador();
@@ -2879,13 +3092,22 @@ function renderOutputBlocks(blocks){
     const wrap = document.createElement('div');
     wrap.className = 'output-wrap';
     const idDiv = `outBlock_${i}`;
-    const textoLimpo = removerPalavrasRepetidas(b.texto);
-    const textoEscapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const textoComNegrito = boldarVariaveis(textoEscapado);
+    
+    // Se for HTML, renderizar direto; se for texto, processar como antes
+    let contentHTML;
+    if(b.isHTML){
+      contentHTML = b.html;
+    } else {
+      const textoLimpo = removerPalavrasRepetidas(b.texto);
+      const textoEscapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const textoComNegrito = boldarVariaveis(textoEscapado);
+      contentHTML = textoComNegrito;
+    }
+    
     wrap.innerHTML = `
       ${b.titulo ? `<div class="output-title">${b.titulo}</div>` : ''}
-      <div class="output-block" id="${idDiv}" contenteditable="true" spellcheck="false">${textoComNegrito}</div>
-      <button class="output-copybtn" data-target="${idDiv}">Copiar${b.titulo ? ' — ' + b.titulo : ' texto'}</button>
+      <div class="output-block" id="${idDiv}" contenteditable="${b.isHTML ? 'false' : 'true'}" spellcheck="false">${contentHTML}</div>
+      ${b.isHTML ? '' : `<button class="output-copybtn" data-target="${idDiv}">Copiar${b.titulo ? ' — ' + b.titulo : ' texto'}</button>`}
     `;
     container.appendChild(wrap);
   });
@@ -2901,6 +3123,43 @@ function renderOutputBlocks(blocks){
     });
   });
 }
+
+// ===== CATÁLOGO DE SUPLEMENTOS (gerado da mesma fonte das sugestões — sem enterais, ordem alfabética) =====
+function abrirCatalogoCatalogo(){
+  const tabela = document.getElementById('tabelaCatalogo');
+  tabela.innerHTML = '';
+  
+  const LS_TXT = { contem: ['Contém','var(--danger-soft)','var(--danger)'], isento: ['Isento','var(--accent-soft)','var(--ok)'], tracos: ['Traços','var(--warn-bg)','#8a6d1a'], verificar: ['Verificar','var(--card-2)','var(--muted)'] };
+  const check = (v, cor) => v ? `<span style="color:${cor}; font-weight:800; font-size:14px;">✓</span>` : `<span style="color:var(--faint);">—</span>`;
+  
+  const lista = Object.values(SUPLEMENTOS_CATALOG).slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  
+  lista.forEach((sup, idx) => {
+    const lac = LS_TXT[sup.lactose] || LS_TXT.verificar;
+    const apres = sup.tipo + (sup.ml ? ' ' + sup.ml + (sup.tipo==='po' ? 'g' : 'ml') : '');
+    
+    const tr = document.createElement('tr');
+    tr.style.backgroundColor = idx % 2 === 0 ? 'var(--card-2)' : 'var(--card)';
+    tr.innerHTML = `
+      <td style="border:1px solid var(--border); padding:8px; font-weight:700; color:var(--text); font-size:12px;">${sup.nome}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center; font-size:11px; color:var(--muted);">${apres}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center;">${check(sup.HP,'var(--danger)')}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center;">${check(sup.HC,'#8a6d1a')}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center;">${check(sup.NP,'var(--accent)')}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center;">${check(sup.NC,'var(--ok)')}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center;">${check(sup.arginina,'#5b3a8a')}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center;"><span style="background:${lac[1]}; color:${lac[2]}; padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:700;">${lac[0]}</span></td>
+      <td style="border:1px solid var(--border); padding:8px; font-size:11px; color:var(--muted);">${sup.para}</td>
+    `;
+    tabela.appendChild(tr);
+  });
+  
+  document.getElementById('catalogoModal').style.display = 'block';
+}
+
+document.getElementById('catalogoSupBtn').addEventListener('click', abrirCatalogoCatalogo);
+document.getElementById('fecharCatalogo').addEventListener('click', ()=>{ document.getElementById('catalogoModal').style.display = 'none'; });
+document.getElementById('catalogoModal').addEventListener('click', (e)=>{ if(e.target.id === 'catalogoModal') document.getElementById('catalogoModal').style.display = 'none'; });
 
 document.getElementById('gerarBtn').addEventListener('click', gerarTexto);
 
