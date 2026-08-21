@@ -927,7 +927,7 @@
       <div id="secaoBraden">
       <label>Braden</label>
       <select id="braden">
-        <option value="sem registro">Sem registro — a linha não sairá na nota</option>
+        <option value="sem registro">Sem registro</option>
         <option value="sem risco">Sem risco</option>
         <option value="baixo risco">Baixo risco</option>
         <option value="risco moderado">Risco moderado</option>
@@ -950,36 +950,8 @@
         </div>
       </div>
 
-      <div class="row">
-        <div>
-          <label>Detalhe da função intestinal <span style="font-weight:normal;color:#888;">— opcional</span></label>
-          <input type="text" id="fiDetalhe" placeholder="ex: 2x pastosa">
-        </div>
-        <div>
-          <label>Hemodiálise (volume) <span style="font-weight:normal;color:#888;">— opcional</span></label>
-          <input type="text" id="hemodialise" placeholder="ex: 1800 ml">
-        </div>
-      </div>
-
-      <div class="row" id="secaoRevisitaCampos">
-        <div>
-          <label>Aceitação alimentar</label>
-          <select id="aceitacaoAlimentar">
-            <option value="boa">Boa</option>
-            <option value="moderada">Moderada</option>
-            <option value="baixa">Baixa</option>
-            <option value="nao_avaliada">Não avaliada</option>
-          </select>
-        </div>
-        <div>
-          <label>Dificuldade de deglutição</label>
-          <select id="dificuldadeDeglutica">
-            <option value="nao">Não relata dificuldade</option>
-            <option value="sim">Relata dificuldade</option>
-            <option value="nao_avaliado">Não avaliado</option>
-          </select>
-        </div>
-      </div>
+      <label>Detalhe da função intestinal <span style="font-weight:normal;color:#888;">— opcional</span></label>
+      <input type="text" id="fiDetalhe" placeholder="ex: 2x pastosa">
 
       <div id="secaoHoraLiberacao">
       <label>Horário de liberação da dieta <span style="font-weight:normal;color:#888;">— para Evolução de dieta</span></label>
@@ -2992,9 +2964,7 @@ function gerarTexto(){
     }
     txtEvolucao += `Peso informado ${peso} kg – IMC ${calc.imc.toFixed(2).replace('.',',')} kg/m², Altura informada ${altura} cm.\n`;
     txtEvolucao += `${tituloTriagem} apresentou score ${nrsScore} - ${nrsTexto}, conforme resultado ${menor?'do StrongKids':'da NRS-2002'}.\n`;
-    if(braden !== 'sem registro'){
-      txtEvolucao += `Escala de Braden: ${bradenFrase(braden)}.\n`;
-    }
+    txtEvolucao += `Escala de Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n`;
     txtEvolucao += `${frasesBloqueio()}\n`;
     if(funcaoIntestinalVal === 'nao_avaliado'){
       txtEvolucao += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`;
@@ -3095,9 +3065,6 @@ function gerarTexto(){
   /* ---------------- REVISITA / EVOLUÇÃO ---------------- */
   if(tipoNota==='revisita'){
     const fiDetR = document.getElementById('fiDetalhe').value.trim();
-    const hemoR = document.getElementById('hemodialise').value.trim();
-    const aceitR = document.getElementById('aceitacaoAlimentar').value;
-    const deglutR = document.getElementById('dificuldadeDeglutica').value;
     const fraseSupR = fraseSuplementoSelecionado('Realizo adequações em relação à dieta fornecida, inicio');
 
     let txt = `#Pela Nutrição às ${hora}\n\n`;
@@ -3112,24 +3079,15 @@ function gerarTexto(){
         : `Planejamento terapêutico: mantido VET/proteína já estabelecido pela EMTN.\n\n`;
     } else {
       txt += `Realizo revisita ao paciente, segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())}.${notaProgressaoDietaMedico()}\n`;
-      if(aceitR !== 'nao_avaliada'){
-        txt += `Em conversa com paciente e acompanhante, confirmo ${aceitR} aceitação alimentar.\n\n`;
-      } else {
-        txt += `Aceitação alimentar não avaliada no momento da visita.\n\n`;
-      }
+      txt += `Em conversa com paciente e acompanhante, confirmo boa aceitação alimentar.\n\n`;
       txt += fraseSupR ? `${fraseSupR}\n\n` : `Não realizo adequações na dieta oferecida.\n\n`;
-      if(deglutR === 'nao'){
-        txt += `Não relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n\n`;
-      } else if(deglutR === 'sim'){
-        txt += `Relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n\n`;
-      }
+      txt += `Não relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n\n`;
     }
 
     txt += `Nas últimas 24h:\n`;
     txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${fiDetR?`, ${fiDetR}`:''};\n`;
     if(hgt){ txt += `- HGT: ${hgt};\n`; }
-    if(hemoR){ txt += `- Hemodiálise: ${hemoR};\n`; }
-    if(braden !== 'sem registro'){ txt += `\nEscala Braden: ${bradenFrase(braden)}.\n\n`; } else { txt += `\n`; }
+    txt += `\nEscala Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n\n`;
 
     if(!isJejum && !isEnteral && !isParenteral){
       txt += calc.vet!==null
@@ -3208,7 +3166,6 @@ function gerarTexto(){
       txt += `Nas últimas 24h:\n`;
       txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
       txt += `- HGT: ${hgt || 'sem registro'};\n`;
-      if(document.getElementById('hemodialise').value.trim()){ txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim()};\n`; }
       txt += `Escala Braden: Risco ${bradenTxt} para lesão por pressão.\n\n`;
       txt += `Meta Calórica: segundo EMTN (VET proposto ${vetEmtn} kcal).\n`;
       txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
@@ -3242,7 +3199,6 @@ function gerarTexto(){
       txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito.\n`;
       txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''}.\n`;
       txt += `- HGT: ${hgt || '[completar]'};\n`;
-      if(document.getElementById('hemodialise').value.trim()){ txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim()};\n`; }
       txt += `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em progressão.\n\n`;
       txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
       txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
@@ -3602,25 +3558,16 @@ function montarExportacao(){
   return campos;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ESPELHAMENTO PARA O SBM
-   Só entram aqui campos de TEXTO cujo identificador foi confirmado
-   por inspeção na tela do SBM. Campos de lista (Alergias, Restrições,
-   Prescrição Dietética, Classificação, NRS, Nível) NÃO entram —
-   no SBM eles exigem escolher a opção, colar não funciona.
-   ═══════════════════════════════════════════════════════════════ */
-const MAPA_SBM = {
-  weightDietInput:      ()=> document.getElementById('peso').value,
-  diagnosisDietTextarea:()=> expandirTextoLivre(document.getElementById('sbm_diagnostico').value.trim()),
-  hdaDietTextarea:      ()=> expandirTextoLivre(document.getElementById('sbm_hda').value.trim()),
-  hppDietTextarea:      ()=> expandirTextoLivre(document.getElementById('sbm_hpp').value.trim()),
-  changeDietTextarea:   ()=> document.getElementById('sbm_passagem').value.trim(),
-};
-
+/* Espelhamento para o SBM: envia TODOS os campos, identificados pelo rótulo.
+   O atalho decide o que consegue preencher e o que precisa ser escolhido à mão. */
 function gerarJsonSBM(){
+  const campos = montarExportacao();
+  if(!campos) return '{}';
   const dados = {};
-  Object.entries(MAPA_SBM).forEach(([idSbm, fn])=>{
-    try{ const v = fn(); if(v !== '' && v != null) dados[idSbm] = String(v); }catch(e){}
+  Object.entries(campos).forEach(([k,v])=>{
+    if(k.startsWith('_secao_')) return;
+    if(v === '' || v == null) return;
+    dados[k] = String(v);
   });
   return JSON.stringify(dados);
 }
@@ -3663,7 +3610,7 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
     </div>
     <button class="btn copy" id="copyBlocoBtn" style="margin-top:10px;">Copiar tudo (campo a campo)</button>
     <button class="btn" id="copyJsonSbmBtn" style="margin-top:8px;background:#8a6d1f;">Copiar dados para o atalho do SBM</button>
-    <div style="font-size:11px;color:var(--faint);margin-top:6px;">Copia só os campos de texto que o atalho consegue preencher (Peso, Diagnóstico, HDA, HPP, Passagem de Plantão). Os campos com ▾ continuam sendo escolhidos na lista do SBM.</div>
+    <div style="font-size:11px;color:var(--faint);margin-top:6px;">Copia todos os campos. O atalho preenche os de texto e lista, na tela do SBM, o que precisa ser escolhido à mão (listas e datas).</div>
   `;
 
   document.getElementById('exportOutput').querySelectorAll('.copiar-campo').forEach(btn=>{
@@ -3786,7 +3733,7 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
    salvar/abrir arquivo).
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
-  'hgt','fiDetalhe','hemodialise','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
+  'hgt','fiDetalhe','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
   'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','sbm_bloqueios','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
   'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
   'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
@@ -3838,7 +3785,7 @@ function aplicarEstado(dados){
    restando ajustar apenas o que mudou (glicemia, função intestinal).
    Campos que mudam a cada visita NÃO são restaurados de propósito.
    ═══════════════════════════════════════════════════════════════ */
-const CAMPOS_VOLATEIS = ['hgt','fiDetalhe','hemodialise','tneVolumeInfundido','horaLiberacao',
+const CAMPOS_VOLATEIS = ['hgt','fiDetalhe','tneVolumeInfundido','horaLiberacao',
   'sbm_aceitacao','sbm_ufi','observacoes'];
 
 function chaveLeito(l){ return 'nutriLeito_' + String(l).trim().toLowerCase(); }
