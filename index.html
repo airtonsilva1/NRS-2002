@@ -935,7 +935,7 @@
       </select>
       </div>
 
-      <div class="row">
+      <div class="row" id="secaoFiHgt">
         <div>
           <label>Função intestinal</label>
           <select id="funcaoIntestinal">
@@ -950,8 +950,36 @@
         </div>
       </div>
 
-      <label>Detalhe da função intestinal <span style="font-weight:normal;color:#888;">— opcional</span></label>
-      <input type="text" id="fiDetalhe" placeholder="ex: 2x pastosa">
+      <div class="row" id="secaoFiDetalheHemo">
+        <div>
+          <label>Detalhe da função intestinal <span style="font-weight:normal;color:#888;">— opcional</span></label>
+          <input type="text" id="fiDetalhe" placeholder="ex: 2x pastosa">
+        </div>
+        <div>
+          <label>Hemodiálise (volume) <span style="font-weight:normal;color:#888;">— opcional</span></label>
+          <input type="text" id="hemodialise" placeholder="ex: 1800 ml">
+        </div>
+      </div>
+
+      <div class="row" id="secaoRevisitaCampos">
+        <div>
+          <label>Aceitação alimentar</label>
+          <select id="aceitacaoAlimentar">
+            <option value="boa">Boa</option>
+            <option value="moderada">Moderada</option>
+            <option value="baixa">Baixa</option>
+            <option value="nao_avaliada">Não avaliada</option>
+          </select>
+        </div>
+        <div>
+          <label>Dificuldade de deglutição</label>
+          <select id="dificuldadeDeglutica">
+            <option value="nao">Não relata dificuldade</option>
+            <option value="sim">Relata dificuldade</option>
+            <option value="nao_avaliado">Não avaliado</option>
+          </select>
+        </div>
+      </div>
 
       <div id="secaoHoraLiberacao">
       <label>Horário de liberação da dieta <span style="font-weight:normal;color:#888;">— para Evolução de dieta</span></label>
@@ -1132,9 +1160,6 @@
 
       <label class="first">Preferências</label>
       <input type="text" id="sbm_preferencias" placeholder="ex: frutas cítricas, chá de erva doce">
-
-      <label>Bloqueios <span style="font-weight:normal;color:#888;">— campo do SBM</span></label>
-      <input type="text" id="sbm_bloqueios" placeholder="opcional">
 
       <div class="row">
         <div>
@@ -1846,6 +1871,10 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoPerfilCalorico').style.display = (isTNE || isEvolucaoDieta) ? 'none' : '';
   document.getElementById('secaoTempoInternacao').style.display = (isTNE || isEvolucaoDieta) ? 'none' : '';
   document.getElementById('secaoBraden').style.display = isEvolucaoDieta ? 'none' : '';
+  /* Dados das últimas 24h só fazem sentido em revisita/reavaliação — não na admissão */
+  document.getElementById('secaoFiHgt').style.display = (isAdmissao || isEvolucaoDieta) ? 'none' : '';
+  document.getElementById('secaoFiDetalheHemo').style.display = (isAdmissao || isEvolucaoDieta) ? 'none' : '';
+  document.getElementById('secaoRevisitaCampos').style.display = (isAdmissao || isEvolucaoDieta || isTNE) ? 'none' : '';
 
   if(!isTNE && !isEvolucaoDieta){
     const dietaVal = document.getElementById('dieta').value;
@@ -2385,7 +2414,7 @@ const ACRONIMOS_MEDICOS = {
   'IRC':'insuficiência renal crônica', 'IRA':'insuficiência renal aguda', 'DRC':'doença renal crônica',
   'LRA':'lesão renal aguda', 'TCE':'traumatismo cranioencefálico', 'TEP':'tromboembolismo pulmonar',
   'TVP':'trombose venosa profunda', 'ITU':'infecção do trato urinário', 'FA':'fibrilação atrial',
-  'LES':'lúpus eritematoso sistêmico', 'EM':'esclerose múltipla', 'PCR':'parada cardiorrespiratória',
+  'LES':'lúpus eritematoso sistêmico', 'PCR':'parada cardiorrespiratória',
   'DHE':'distúrbio hidroeletrolítico', 'BCP':'broncopneumonia', 'PNM':'pneumonia', 'PAV':'pneumonia associada à ventilação mecânica',
   'IRpA':'insuficiência respiratória aguda', 'SRAG':'síndrome respiratória aguda grave', 'ACM':'a critério médico',
   'CPM':'conforme prescrição médica', 'POI':'pós-operatório imediato', 'POT':'pós-operatório tardio',
@@ -2956,7 +2985,7 @@ function gerarTexto(){
     const refIMC = idadeNum >= 60 ? 'IMC do idoso (Lipschitz, 1994)' : 'IMC do adulto';
     const fraseSup = fraseSuplementoSelecionado('Dieta via oral associada a');
 
-    let txtEvolucao = `#Pela Nutrição às ${hora}\n\n`;
+    let txtEvolucao = `#Pela Nutrição às ${hora}\n`;
     if(isJejum){
       txtEvolucao += `Em admissão do paciente${leito?` internado no leito ${leito}`:''}, realizo ${menor?'StrongKids':'NRS-2002'};\n`;
     } else {
@@ -2967,7 +2996,7 @@ function gerarTexto(){
     txtEvolucao += `Escala de Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n`;
     txtEvolucao += `${frasesBloqueio()}\n`;
     if(funcaoIntestinalVal === 'nao_avaliado'){
-      txtEvolucao += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`;
+      txtEvolucao += `Função intestinal: sem registro.\n`;
     } else {
       txtEvolucao += `${FI_ADMISSAO[funcaoIntestinalVal].replace(/\.$/,'')}${fiDet?`, ${fiDet}`:', relatando ser regular'}.\n`;
     }
@@ -2988,7 +3017,7 @@ function gerarTexto(){
     } else {
       txtEvolucao += `Planejamento terapêutico: O paciente segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())} e conforme preferências.${notaProgressaoDietaMedico()}\n`;
       if(fraseSup) txtEvolucao += `${fraseSup}\n`;
-      txtEvolucao += `VET PROPOSTO diário: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e proteínas: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`;
+      txtEvolucao += `VET PROPOSTO diário: ${calc.vet !== null ? calc.vet : 'sem registro'} kcal (${calc.perfil.kcal} kcal/kg) e proteínas: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`;
       txtEvolucao += `Oriento quanto características da dieta liberada, paciente e acompanhante compreenderam as informações prestadas.\n`;
       txtEvolucao += `Dietoterapia ajustada aos efeitos colaterais e interações medicamentosas. Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     }
@@ -3065,36 +3094,48 @@ function gerarTexto(){
   /* ---------------- REVISITA / EVOLUÇÃO ---------------- */
   if(tipoNota==='revisita'){
     const fiDetR = document.getElementById('fiDetalhe').value.trim();
+    const hemoR = document.getElementById('hemodialise').value.trim();
+    const aceitR = document.getElementById('aceitacaoAlimentar').value;
+    const deglutR = document.getElementById('dificuldadeDeglutica').value;
     const fraseSupR = fraseSuplementoSelecionado('Realizo adequações em relação à dieta fornecida, inicio');
 
-    let txt = `#Pela Nutrição às ${hora}\n\n`;
+    let txt = `#Pela Nutrição às ${hora}\n`;
 
     if(isJejum){
-      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue em jejum/dieta zero no momento, sem aceitação alimentar a ser avaliada.\n\n`;
-      txt += `Planejamento terapêutico: mantido jejum até o momento, aguardando liberação de dieta conforme prescrição médica.\n\n`;
+      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue em jejum/dieta zero no momento, sem aceitação alimentar a ser avaliada.\n`;
+      txt += `Planejamento terapêutico: mantido jejum até o momento, aguardando liberação de dieta conforme prescrição médica.\n`;
     } else if(isEnteral || isParenteral){
-      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue recebendo dieta ${isEnteral?'enteral':'parenteral'} conforme prescrição médica.\n\n`;
+      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue recebendo dieta ${isEnteral?'enteral':'parenteral'} conforme prescrição médica.\n`;
       txt += calc.vet!==null
-        ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal e ${calc.ptn} g de proteína.\n\n`
-        : `Planejamento terapêutico: mantido VET/proteína já estabelecido pela EMTN.\n\n`;
+        ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`
+        : `Planejamento terapêutico: mantido VET/proteína já estabelecido pela EMTN.\n`;
     } else {
       txt += `Realizo revisita ao paciente, segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())}.${notaProgressaoDietaMedico()}\n`;
-      txt += `Em conversa com paciente e acompanhante, confirmo boa aceitação alimentar.\n\n`;
-      txt += fraseSupR ? `${fraseSupR}\n\n` : `Não realizo adequações na dieta oferecida.\n\n`;
-      txt += `Não relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n\n`;
+      if(aceitR !== 'nao_avaliada'){
+        txt += `Em conversa com paciente e acompanhante, confirmo ${aceitR} aceitação alimentar.\n`;
+      } else {
+        txt += `Aceitação alimentar não avaliada no momento da visita.\n`;
+      }
+      txt += fraseSupR ? `${fraseSupR}\n` : `Não realizo adequações na dieta oferecida.\n`;
+      if(deglutR === 'nao'){
+        txt += `Não relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n`;
+      } else if(deglutR === 'sim'){
+        txt += `Relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n`;
+      }
     }
 
-    txt += `Nas últimas 24h:\n`;
+    txt += `\nNas últimas 24h:\n`;
     txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${fiDetR?`, ${fiDetR}`:''};\n`;
-    if(hgt){ txt += `- HGT: ${hgt};\n`; }
-    txt += `\nEscala Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n\n`;
+    txt += `- HGT: ${hgt || 'sem registro'};\n`;
+    txt += `- Hemodiálise: ${hemoR || 'sem registro'};\n`;
+    txt += `\nEscala Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n`;
 
     if(!isJejum && !isEnteral && !isParenteral){
       txt += calc.vet!==null
         ? `Planejamento terapêutico: VET proposto diário: ${calc.vet} kcal. Proteínas ${calc.ptn} g/dia.\n`
         : `Planejamento terapêutico: mantido plano nutricional já estabelecido, sem alterações.\n`;
     }
-    txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n\n`;
+    txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
     txt += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}\n`;
     txt += `Classificado como nível de assistência ${calc.nivel}, mantendo acompanhamento da nutrição${(isEnteral||isParenteral)?' e da EMTN':''}.`;
 
@@ -3163,9 +3204,10 @@ function gerarTexto(){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
       txt += `Segue percorrendo ${taxaInfusao} ml/h, totalizando ${volumePrescrito} ml.\n\n`;
-      txt += `Nas últimas 24h:\n`;
+      txt += `\nNas últimas 24h:\n`;
       txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
       txt += `- HGT: ${hgt || 'sem registro'};\n`;
+      txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim() || 'sem registro'};\n`;
       txt += `Escala Braden: Risco ${bradenTxt} para lesão por pressão.\n\n`;
       txt += `Meta Calórica: segundo EMTN (VET proposto ${vetEmtn} kcal).\n`;
       txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
@@ -3195,10 +3237,11 @@ function gerarTexto(){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
       txt += `Planejamento terapêutico: VET proposto diário pela EMTN ${vetEmtn} kcal.\n\n`;
-      txt += `Nas últimas 24h:\n`;
+      txt += `\nNas últimas 24h:\n`;
       txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito.\n`;
       txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''}.\n`;
-      txt += `- HGT: ${hgt || '[completar]'};\n`;
+      txt += `- HGT: ${hgt || 'sem registro'};\n`;
+      txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim() || 'sem registro'};\n`;
       txt += `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em progressão.\n\n`;
       txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
       txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
@@ -3308,6 +3351,7 @@ function renderOutputBlocks(blocks){
       contentHTML = b.html;
     } else {
       let textoLimpo = removerPalavrasRepetidas(b.texto);
+      textoLimpo = textoLimpo.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
       textoLimpo = textoLimpo.replace(/(\d)\.(\d)/g, '$1,$2');   // decimais no padrão pt-BR
       const textoEscapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;');
       let textoComNegrito = boldarVariaveis(textoEscapado);
@@ -3515,118 +3559,52 @@ function montarExportacao(){
   const alergChips = alergiasSelecionadas();
   const alergTudo = [...alergChips, document.getElementById('alergias').value.trim()].filter(Boolean).join(', ');
 
-  const sexoExp = segVal('segSexo') === 'M' ? 'Masculino' : (segVal('segSexo') === 'F' ? 'Feminino' : '');
-  const menorExp = idadeMenor();
-  const bloqueiosExp = document.getElementById('sbm_bloqueios') ? document.getElementById('sbm_bloqueios').value.trim() : '';
-
-  /* Ordem idêntica à da aba PACIENTE do SBM Tech, seção por seção.
-     _secao marca o cabeçalho do acordeão correspondente no SBM. */
   const campos = {
-    "_secao_Paciente": "",
-    "Sexo": sexoExp,
+    "NRS-2002": String(nrsTotal()),
     "Peso": document.getElementById('peso').value,
-    "Peso Ideal": calc.pesoIdeal ? calc.pesoIdeal.toFixed(2).replace('.', ',') : '',
+    "Peso Ideal": calc.pesoIdeal.toFixed(2).replace('.', ','),
     "Altura": document.getElementById('altura').value,
-    "IMC": calc.imc ? calc.imc.toFixed(2).replace('.', ',') : '',
+    "IMC": calc.imc.toFixed(2),
     "Classificação": calc.classificacao,
-    "NRS / STRONG KIDS": String(nrsTotal()) + (menorExp ? ' (StrongKids)' : ''),
     "Nível de Assistência": nivelPt.charAt(0).toUpperCase()+nivelPt.slice(1),
     "Próx. Evolução": formatDate(calc.proxEvolucao),
     "Próx. Reavaliação": formatDate(calc.proxReavaliacao),
     "Visita": formatDate(new Date()),
-
-    "_secao_Dieta": "",
     "Prescrição Dietética": dietaBase,
-    "Observação em Geral": temp ? `Temperatura: ${temp}` : "",
+    "Temperatura": temp || "",
     "Restrições": restr || "",
-    "Alergias": alergTudo || "",
-    "Bloqueios": bloqueiosExp,
+    "Alergias": alergTudo,
     "Preferências": document.getElementById('sbm_preferencias').value.trim(),
     "VET e Proteína": `VET: ${calc.vet} kcal | PTN: ${calc.ptn} g`,
-
-    "_secao_Diagnóstico": "",
+    "HGT": document.getElementById('hgt').value.trim(),
+    "UFI": document.getElementById('sbm_ufi').value.trim(),
+    "Aceitação": document.getElementById('sbm_aceitacao').value.trim(),
     "Diagnóstico de Internação": expandirTextoLivre(document.getElementById('sbm_diagnostico').value.trim()),
     "HDA": expandirTextoLivre(document.getElementById('sbm_hda').value.trim()),
     "HPP": expandirTextoLivre(document.getElementById('sbm_hpp').value.trim()),
-    "HGT": document.getElementById('hgt').value.trim(),
-    "Aceitação": document.getElementById('sbm_aceitacao').value.trim(),
-    "UFI": document.getElementById('sbm_ufi').value.trim(),
-
-    "_secao_Passagem de Plantão": "",
     "Passagem de Plantão": document.getElementById('sbm_passagem').value.trim(),
   };
   return campos;
-}
-
-/* Espelhamento para o SBM: envia TODOS os campos, identificados pelo rótulo.
-   O atalho decide o que consegue preencher e o que precisa ser escolhido à mão. */
-function gerarJsonSBM(){
-  const campos = montarExportacao();
-  if(!campos) return '{}';
-  const dados = {};
-  Object.entries(campos).forEach(([k,v])=>{
-    if(k.startsWith('_secao_')) return;
-    if(v === '' || v == null) return;
-    dados[k] = String(v);
-  });
-  return JSON.stringify(dados);
 }
 
 document.getElementById('exportBtn').addEventListener('click', ()=>{
   const campos = montarExportacao();
   if(!campos) return;
 
-  /* Campos que no SBM são lista fechada (modal de seleção), não caixa de texto.
-     O valor serve de referência para você escolher na lista — colar não funciona. */
-  const CAMPOS_LISTA_SBM = ['Restrições','Alergias','Prescrição Dietética','Classificação','NRS / STRONG KIDS','Nível de Assistência','Sexo'];
-
-  const entradas = Object.entries(campos);
-
-  /* Texto puro para copiar (sem os marcadores de seção) */
-  let bloco = entradas
-    .filter(([k])=>!k.startsWith('_secao_'))
-    .map(([k,v])=>`${k}: ${v||"—"}`).join('\n');
-
-  /* Exibição agrupada, na mesma ordem da tela do SBM */
-  let htmlLinhas = '';
-  entradas.forEach(([k,v])=>{
-    if(k.startsWith('_secao_')){
-      htmlLinhas += `<div style="margin:14px 0 6px; padding-top:8px; border-top:1px solid var(--border); font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--accent-dark);">${k.replace('_secao_','')}</div>`;
-      return;
-    }
-    const lista = CAMPOS_LISTA_SBM.includes(k);
-    const valor = (v||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    htmlLinhas += `<div style="display:flex; gap:8px; padding:4px 0; align-items:flex-start;">
-      <span style="min-width:190px; color:var(--muted); font-size:12px;">${k}${lista?' <span title="No SBM este campo é lista de seleção — escolha a opção, não cole" style="color:#8a6d1a; font-weight:700;">▾</span>':''}</span>
-      <span style="flex:1; font-weight:600; font-size:12.5px; color:var(--text); font-family:var(--font-mono);">${valor}</span>
-      <button class="copiar-campo mini-btn" data-valor="${(v||'').replace(/"/g,'&quot;')}" style="padding:2px 8px; font-size:11px;">copiar</button>
-    </div>`;
-  });
+  let bloco = Object.entries(campos).map(([k,v])=>`${k}: ${v||"—"}`).join('\n');
+  const json = JSON.stringify(campos, null, 0);
 
   document.getElementById('exportOutput').innerHTML = `
-    <div style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); padding:14px;">
-      <div style="font-size:11.5px; color:var(--faint); margin-bottom:4px;">Campos na mesma ordem da aba PACIENTE do SBM. O símbolo <b style="color:#8a6d1a;">▾</b> marca campos que no SBM são lista de seleção — nesses, use o valor como referência e escolha na lista.</div>
-      ${htmlLinhas}
-    </div>
-    <button class="btn copy" id="copyBlocoBtn" style="margin-top:10px;">Copiar tudo (campo a campo)</button>
-    <button class="btn" id="copyJsonSbmBtn" style="margin-top:8px;background:#8a6d1f;">Copiar dados para o atalho do SBM</button>
-    <div style="font-size:11px;color:var(--faint);margin-top:6px;">Copia todos os campos. O atalho preenche os de texto e lista, na tela do SBM, o que precisa ser escolhido à mão (listas e datas).</div>
+    <div style="white-space:pre-wrap;font-family:'Courier New',monospace;font-size:12.8px;line-height:1.6;background:#fdfcf9;border:1px solid var(--border);border-radius:4px;padding:16px;">${bloco.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+    <button class="btn copy" id="copyBlocoBtn" style="margin-top:10px;">Copiar bloco (campo a campo)</button>
+    <button class="btn" id="copyJsonBtn" style="margin-top:8px;background:#8a6d1f;">Copiar JSON (preenchimento automático)</button>
   `;
 
-  document.getElementById('exportOutput').querySelectorAll('.copiar-campo').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      navigator.clipboard.writeText(btn.dataset.valor || '').then(()=>{
-        showToast('Copiado ✓');
-        btn.textContent = 'copiado';
-        setTimeout(()=>{ btn.textContent = 'copiar'; }, 1200);
-      });
-    });
-  });
   document.getElementById('copyBlocoBtn').addEventListener('click', ()=>{
     navigator.clipboard.writeText(bloco).then(()=>showToast('Bloco copiado ✓'));
   });
-  document.getElementById('copyJsonSbmBtn').addEventListener('click', ()=>{
-    navigator.clipboard.writeText(gerarJsonSBM()).then(()=>showToast('Dados copiados — abra o SBM e clique no atalho ✓'));
+  document.getElementById('copyJsonBtn').addEventListener('click', ()=>{
+    navigator.clipboard.writeText(json).then(()=>showToast('JSON copiado'));
   });
 });
 
@@ -3733,8 +3711,8 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
    salvar/abrir arquivo).
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
-  'hgt','fiDetalhe','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
-  'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','sbm_bloqueios','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
+  'hgt','fiDetalhe','hemodialise','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
+  'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
   'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
   'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
   'admVolumeParenteral','admTaxaParenteral','admKcalParenteral','admPtnParenteral','admFormulaParenteralOutra'];
@@ -3785,7 +3763,7 @@ function aplicarEstado(dados){
    restando ajustar apenas o que mudou (glicemia, função intestinal).
    Campos que mudam a cada visita NÃO são restaurados de propósito.
    ═══════════════════════════════════════════════════════════════ */
-const CAMPOS_VOLATEIS = ['hgt','fiDetalhe','tneVolumeInfundido','horaLiberacao',
+const CAMPOS_VOLATEIS = ['hgt','fiDetalhe','hemodialise','tneVolumeInfundido','horaLiberacao',
   'sbm_aceitacao','sbm_ufi','observacoes'];
 
 function chaveLeito(l){ return 'nutriLeito_' + String(l).trim().toLowerCase(); }
