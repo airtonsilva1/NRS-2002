@@ -512,6 +512,7 @@
       <div>
         <h1>Gerador de Evolução Nutricional</h1>
         <small>Apoio ao registro em prontuário</small>
+        <small style="display:block; margin-top:2px; color:var(--faint); font-size:11.5px;">Desenvolvido por Airton Brendon — Nutricionista, CRN4 22102218</small>
       </div>
     </div>
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -579,6 +580,7 @@
         <div>
           <label>Nº do leito</label>
           <input type="text" id="leito" placeholder="opcional">
+          <button id="carregarLeitoBtn" type="button" class="mini-btn" style="display:none; margin-top:6px; width:100%; text-align:center;" title="Preenche os dados da última nota deste leito"></button>
         </div>
       </div>
 
@@ -925,7 +927,7 @@
       <div id="secaoBraden">
       <label>Braden</label>
       <select id="braden">
-        <option value="sem registro">Sem registro</option>
+        <option value="sem registro">Sem registro — a linha não sairá na nota</option>
         <option value="sem risco">Sem risco</option>
         <option value="baixo risco">Baixo risco</option>
         <option value="risco moderado">Risco moderado</option>
@@ -1288,12 +1290,12 @@ Object.entries(PERFIS).forEach(([k,v])=>{
 selPerfil.value = 'auto';
 
 /* Regra automática:
-   magreza:            30 kcal/kg, 1,5 g ptn/kg
-   magreza + renal:    30 kcal/kg, 1,0 g ptn/kg
-   eutrofia:           25 kcal/kg, 1,2 g ptn/kg
-   eutrofia + renal:   25 kcal/kg, 1,0 g ptn/kg
-   sobrepeso/obeso:    20 kcal/kg, 1,2 g ptn/kg
-   sobrepeso/obeso + renal: 20 kcal/kg, 1,0 g ptn/kg */
+   magreza:            30 kcal/kg, 1,5 g de proteína/kg
+   magreza + renal:    30 kcal/kg, 1,0 g de proteína/kg
+   eutrofia:           25 kcal/kg, 1,2 g de proteína/kg
+   eutrofia + renal:   25 kcal/kg, 1,0 g de proteína/kg
+   sobrepeso/obeso:    20 kcal/kg, 1,2 g de proteína/kg
+   sobrepeso/obeso + renal: 20 kcal/kg, 1,0 g de proteína/kg */
 function categoriaIMC(imc, idade){
   if(idade && idade>=60){
     if(imc<22) return 'magreza';
@@ -1937,8 +1939,9 @@ function atualizarChecklist(){
   itens.push([!!hgt, 'HGT']);
 
   if(tipo==='tne'){
-    const via = document.getElementById('tneVia').value;
-    const viaParenteral = VIAS_PARENTERAIS.includes(via);
+    const viaCodigo = document.getElementById('tneVia').value;
+    const via = viaCodigo;
+    const viaParenteral = VIAS_PARENTERAIS.includes(viaCodigo);
     if(viaParenteral){
       itens.push([!!document.getElementById('tneVolumePrescrito').value, 'Volume/taxa parenteral']);
     } else {
@@ -2172,6 +2175,17 @@ function comorbidadesDeRestricoes(){
   return restricoesSelecionadas().filter(k=>RESTRICAO_COMORBIDADE[k]).map(k=>RESTRICAO_COMORBIDADE[k]);
 }
 
+/* Braden no padrão da base institucional ("Sem risco para lesão por pressão") */
+function bradenFrase(v){
+  const M = {
+    'sem risco':'Sem risco para lesão por pressão',
+    'baixo risco':'Baixo risco para lesão por pressão',
+    'risco moderado':'Risco moderado para lesão por pressão',
+    'alto risco':'Alto risco para lesão por pressão'
+  };
+  return M[v] || v;
+}
+
 function frasesBloqueio(){
   const chips = alergiasSelecionadas();
   const alergLivre = document.getElementById('alergias').value.trim();
@@ -2253,13 +2267,20 @@ function totalFormulaTexto(dados){
   if(!dados || !dados.kcalMl) return '';
   const kcalL = Math.round(dados.kcalMl*1000);
   const ptnL = Math.round(dados.ptnMl*1000*10)/10;
-  return `${kcalL} kcal e ${ptnL}g ptn por litro`;
+  return `${kcalL} kcal e ${ptnL} g de proteína por litro`;
 }
+
+/* Marca um campo como preenchido à mão — o autocálculo passa a respeitá-lo. */
+function marcarComoManual(el){ if(el) el.dataset.manual = '1'; }
+function limparFlagManual(ids){ ids.forEach(id=>{ const el=document.getElementById(id); if(el) delete el.dataset.manual; }); }
 
 function autoCalcularEnteral(selId, volId, kcalId, ptnId, fibraId){
   const fVal = document.getElementById(selId).value;
   const vol = parseFloat(document.getElementById(volId).value);
   const dados = FORMULAS_ENTERAIS[fVal];
+  /* Se o nutricionista digitou os valores, o autocálculo não sobrescreve (dados do rótulo/EMTN têm prioridade) */
+  const kEl = document.getElementById(kcalId), pEl = document.getElementById(ptnId), fEl = document.getElementById(fibraId);
+  if((kEl && kEl.dataset.manual) || (pEl && pEl.dataset.manual)) return;
   if(dados && dados.kcalMl && vol){
     document.getElementById(kcalId).value = Math.round(dados.kcalMl*vol*10)/10;
     document.getElementById(ptnId).value = Math.round(dados.ptnMl*vol*10)/10;
@@ -2463,11 +2484,11 @@ function fraseSuplementoSelecionado(prefixo){
     const s = SUPLEMENTOS_CATALOG[k];
     if(!s) return null;
     const freq = SUPLEMENTOS_MARCADOS[k] || '1x';
-    const det = `${s.proteina}g ptn e ${s.kcal} kcal por ${s.ml ? s.ml + (s.tipo==='po'?'g':'ml') : 'porção'}`;
+    const det = `${s.proteina} g de proteína e ${s.kcal} kcal por ${s.ml ? s.ml + (s.tipo==='po'?'g':'ml') : 'porção'}`;
     return `suplementação ${caracteristicasSuplemento(s)}, ${freq} ao dia, ${s.nome} (${det})`;
   }).filter(Boolean);
   if(partes.length === 0) return '';
-  return `${prefixo || 'Dieta VO associada a'} ${partes.join('; associada a ')}.`;
+  return `${prefixo || 'Dieta via oral associada a'} ${partes.join('; associada a ')}.`;
 }
 
 function temRiscoNutricional(){ return nrsTotal() >= 3; }
@@ -2772,6 +2793,42 @@ function calcSemPeso(){
           prox:proxEvolucao, proxEvolucao, proxReavaliacao, nivel, pesoIdeal:null};
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   VALIDAÇÃO DE PLAUSIBILIDADE
+   Pega erro de digitação (ex.: 640 kg em vez de 64) antes que o
+   valor vá parar no prontuário. Não bloqueia: pede confirmação.
+   ═══════════════════════════════════════════════════════════════ */
+function validarPlausibilidade(){
+  const idade = parseFloat(document.getElementById('idade').value);
+  const peso = parseFloat(document.getElementById('peso').value);
+  const altura = parseFloat(document.getElementById('altura').value);
+  const menor = idadeMenor();
+  const avisos = [];
+
+  if(peso){
+    if(menor){ if(peso < 0.4 || peso > 120) avisos.push(`Peso de ${peso} kg fora da faixa esperada para paciente pediátrico`); }
+    else if(peso < 25 || peso > 300) avisos.push(`Peso de ${peso} kg fora da faixa esperada para adulto`);
+  }
+  if(altura){
+    if(menor){ if(altura < 30 || altura > 200) avisos.push(`Altura de ${altura} cm fora da faixa esperada para paciente pediátrico`); }
+    else if(altura < 120 || altura > 230) avisos.push(`Altura de ${altura} cm fora da faixa esperada para adulto`);
+    if(altura < 3) avisos.push('Altura parece estar em metros — o campo espera centímetros (ex.: 165)');
+  }
+  if(peso && altura && altura > 3){
+    const imc = peso / Math.pow(altura/100, 2);
+    if(imc < 10 || imc > 70) avisos.push(`IMC calculado de ${imc.toFixed(1)} kg/m² — confira peso e altura`);
+  }
+  if(idade && (idade < 0 || idade > 120)) avisos.push(`Idade de ${idade} anos fora da faixa esperada`);
+
+  const vetM = parseFloat(document.getElementById('vetManual').value);
+  if(vetM && (vetM < 200 || vetM > 5000)) avisos.push(`VET manual de ${vetM} kcal fora da faixa usual`);
+  const ptnM = parseFloat(document.getElementById('ptnManual').value);
+  if(ptnM && (ptnM < 5 || ptnM > 300)) avisos.push(`Proteína manual de ${ptnM} g fora da faixa usual`);
+
+  if(avisos.length === 0) return true;
+  return confirm('Confira estes valores antes de gerar a nota:\n\n• ' + avisos.join('\n• ') + '\n\nGerar a nota mesmo assim?');
+}
+
 function gerarTexto(){
   const sexoVal = segVal('segSexo');
   if(!sexoVal){
@@ -2801,6 +2858,8 @@ function gerarTexto(){
       return;
     }
   }
+  if(!validarPlausibilidade()) return;
+
   calc.nivel = NIVEL_PT[calc.nivel];
 
   // permite sobrepor VET/proteína manualmente (ver campos opcionais no formulário)
@@ -2863,7 +2922,7 @@ function gerarTexto(){
       const vetEmtnAdm = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
       txtNrs += `Planejamento terapêutico: VET proposto diário pela EMTN ${vetEmtnAdm} kcal.\n`;
     } else {
-      txtNrs += `Planejamento terapêutico: VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg${calc.perfil.base==='ideal'?' peso ideal':''}) e ${calc.ptn} g (${calc.perfil.ptn} g ptn/kg${calc.perfil.base==='ideal'?' peso ideal':''})\n`;
+      txtNrs += `Planejamento terapêutico: VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg${calc.perfil.base==='ideal'?' peso ideal':''}) e ${calc.ptn} g (${calc.perfil.ptn} g de proteína/kg${calc.perfil.base==='ideal'?' peso ideal':''})\n`;
     }
     txtNrs += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}`;
 
@@ -2920,7 +2979,7 @@ function gerarTexto(){
     const fiDet = document.getElementById('fiDetalhe').value.trim();
     const idadeNum = parseInt(document.getElementById('idade').value) || 0;
     const refIMC = idadeNum >= 60 ? 'IMC do idoso (Lipschitz, 1994)' : 'IMC do adulto';
-    const fraseSup = fraseSuplementoSelecionado('Dieta VO associada a');
+    const fraseSup = fraseSuplementoSelecionado('Dieta via oral associada a');
 
     let txtEvolucao = `#Pela Nutrição às ${hora}\n\n`;
     if(isJejum){
@@ -2930,7 +2989,9 @@ function gerarTexto(){
     }
     txtEvolucao += `Peso informado ${peso} kg – IMC ${calc.imc.toFixed(2).replace('.',',')} kg/m², Altura informada ${altura} cm.\n`;
     txtEvolucao += `${tituloTriagem} apresentou score ${nrsScore} - ${nrsTexto}, conforme resultado ${menor?'do StrongKids':'da NRS-2002'}.\n`;
-    txtEvolucao += `Escala de Braden: ${braden}.\n`;
+    if(braden !== 'sem registro'){
+      txtEvolucao += `Escala de Braden: ${bradenFrase(braden)}.\n`;
+    }
     txtEvolucao += `${frasesBloqueio()}\n`;
     if(funcaoIntestinalVal === 'nao_avaliado'){
       txtEvolucao += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`;
@@ -2964,14 +3025,14 @@ function gerarTexto(){
     let tituloMulti, txtMulti = '';
 
     if(isJejum){
-      tituloMulti = 'Plano educacional (multidisciplinar) em JEJUM';
+      tituloMulti = 'Plano educacional (multidisciplinar) — jejum';
       txtMulti += `Oriento paciente e acompanhante quanto jejum a critério médico para procedimento cirúrgico. Oriento quanto marcação da primeira refeição ser realizada exclusivamente com a nutricionista e que a mesma orientará quanto características da dieta prescrita pela equipe médica.\n`;
       txtMulti += `Planejamento terapêutico: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n\n`;
       txtMulti += `Oriento paciente quanto a alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
       txtMulti += `Oriento paciente e acompanhante sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
       txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     } else if(isEnteral){
-      tituloMulti = 'Plano educacional de TNE';
+      tituloMulti = 'Plano educacional de terapia nutricional enteral';
       const vetEmtnAdm3 = document.getElementById('admVetEmtn').value;
       txtMulti += `Oriento acompanhante quanto progressão da terapia nutricional enteral e suas características de ${descreverFormulaEnteralAdm()}.\n`;
       txtMulti += vetEmtnAdm3 ? `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtnAdm3} kcal;\n\n` : `Planejamento terapêutico: será definido VET proposto final conforme EMTN;\n\n`;
@@ -2979,7 +3040,7 @@ function gerarTexto(){
       txtMulti += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
       txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     } else if(isParenteral){
-      tituloMulti = 'Plano educacional de TNP';
+      tituloMulti = 'Plano educacional de terapia nutricional parenteral';
       const vetEmtnAdm4 = document.getElementById('admVetEmtn').value;
       txtMulti += `Oriento paciente e acompanhante quanto terapia nutricional parenteral e suas características, ${descreverFormulaParenteralAdm()}.\n`;
       txtMulti += vetEmtnAdm4 ? `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtnAdm4} kcal.\n\n` : `Planejamento terapêutico: será definido VET proposto final conforme EMTN;\n\n`;
@@ -2987,7 +3048,7 @@ function gerarTexto(){
       txtMulti += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
       txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     } else {
-      tituloMulti = 'Plano educacional (multidisciplinar) VO liberada';
+      tituloMulti = 'Plano educacional (multidisciplinar) — via oral liberada';
       const tempVal = document.getElementById('temperatura').value;
       const tempTxt = tempVal ? ` em temperatura ${tempVal}` : '';
       txtMulti += `Oriento paciente e acompanhante quanto início da dieta via oral na consistência ${V(dietaTxt.toLowerCase())}${tempTxt} e oriento quanto suas características.${notaProgressaoDietaMedico()}\n`;
@@ -2999,27 +3060,26 @@ function gerarTexto(){
     }
 
     /* ===== BLOCO 3: NRS 2002 / STRONGKIDS ===== */
-    const sufixoNrs = isJejum ? ' - JEJUM' : (isEnteral ? ' - TNE' : (isParenteral ? ' - TNP' : ' - VO liberada'));
-    let txtNrsFinal = `#Pela Nutrição às ${hora}\n\n`;
-    txtNrsFinal += `Paciente ${nrsTexto}, score ${nrsScore} segundo ${menor?'StrongKids':'NRS 2002'};\n\n`;
+    const sufixoNrs = isJejum ? ' — jejum' : (isEnteral ? ' — terapia nutricional enteral' : (isParenteral ? ' — terapia nutricional parenteral' : ' — via oral liberada'));
+    let txtNrsFinal = `#Pela Nutrição às ${hora}\n`;
+    txtNrsFinal += `Paciente ${nrsTexto}, score ${nrsScore} segundo ${menor?'StrongKids':'NRS 2002'};\n`;
     const classifLimpa = calc.classificacao.replace(/\s*\([^)]*\)\s*/g,'').trim().toLowerCase();
-    txtNrsFinal += `Classificado como nível de assistência ${calc.nivel} e ${classifLimpa} segundo ${refIMC};\n\n`;
+    txtNrsFinal += `Classificado como nível de assistência ${calc.nivel} e ${classifLimpa} segundo ${refIMC};\n`;
     if(isJejum){
-      txtNrsFinal += `Segue em jejum conforme solicitação médica para procedimento cirúrgico;\n\n`;
+      txtNrsFinal += `Segue em jejum conforme solicitação médica para procedimento cirúrgico;\n`;
     } else if(isEnteral || isParenteral){
-      txtNrsFinal += `Recebendo dieta ${isEnteral?'enteral':'parenteral'}: ${isEnteral?descreverFormulaEnteralAdm():descreverFormulaParenteralAdm()};\n\n`;
+      txtNrsFinal += `Recebendo dieta ${isEnteral?'enteral':'parenteral'}: ${isEnteral?descreverFormulaEnteralAdm():descreverFormulaParenteralAdm()};\n`;
     } else {
       txtNrsFinal += `Recebendo dieta ${V(dietaTxt.toLowerCase())};\n`;
       if(fraseSup) txtNrsFinal += `${fraseSup}\n`;
-      txtNrsFinal += `\n`;
     }
     if(isEnteral || isParenteral){
       const vetEmtnNrs = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
-      txtNrsFinal += `Planejamento terapêutico: VET proposto pela EMTN ${vetEmtnNrs} kcal\n\n`;
+      txtNrsFinal += `Planejamento terapêutico: VET proposto pela EMTN ${vetEmtnNrs} kcal.\n`;
     } else {
-      txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal e ${calc.ptn} g de proteína\n\n`;
+      txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`;
     }
-    txtNrsFinal += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}\n\n`;
+    txtNrsFinal += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}\n`;
     txtNrsFinal += `Segue em acompanhamento nutricional.`;
 
     if(menor){ txtNrsFinal += `\n\n` + txtNrs.split('\n').slice(6).join('\n'); }
@@ -3066,7 +3126,7 @@ function gerarTexto(){
     txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${fiDetR?`, ${fiDetR}`:''};\n`;
     if(hgt){ txt += `- HGT: ${hgt};\n`; }
     if(hemoR){ txt += `- Hemodiálise: ${hemoR};\n`; }
-    txt += `\nEscala Braden: ${braden}.\n\n`;
+    if(braden !== 'sem registro'){ txt += `\nEscala Braden: ${bradenFrase(braden)}.\n\n`; } else { txt += `\n`; }
 
     if(!isJejum && !isEnteral && !isParenteral){
       txt += calc.vet!==null
@@ -3108,10 +3168,11 @@ function gerarTexto(){
   /* ---------------- REAVALIAÇÃO DE TNE ---------------- */
   if(tipoNota==='tne'){
     const BRADEN_RISCO_TXT = {"sem registro":"não avaliado","sem risco":"ausente","baixo risco":"baixo","risco moderado":"moderado","alto risco":"alto"};
-    const MODO_INFUSAO_TXT = {BI:'BI', gravitacional:'sistema gravitacional', intermitente:'infusão intermitente'};
+    const MODO_INFUSAO_TXT = {BI:'bomba de infusão', gravitacional:'sistema gravitacional', intermitente:'infusão intermitente'};
 
-    const via = document.getElementById('tneVia').value;
-    const viaParenteral = VIAS_PARENTERAIS.includes(via);
+    const viaCodigoTne = document.getElementById('tneVia').value;
+    const via = (ACRONIMOS_MEDICOS[viaCodigoTne] || viaCodigoTne);   // por extenso no prontuário
+    const viaParenteral = VIAS_PARENTERAIS.includes(viaCodigoTne);
     const volumePrescrito = document.getElementById('tneVolumePrescrito').value;
     const taxaInfusao = document.getElementById('tneTaxaInfusao').value;
     const kcalFormula = document.getElementById('tneKcalFormula').value || (calc.vet!==null ? calc.vet : '[completar]');
@@ -3166,7 +3227,7 @@ function gerarTexto(){
       if(totalTxtEnt) descFormula += ` — ${totalTxtEnt}`;
       const fibraFormula = document.getElementById('tneFibraFormula').value;
       const fibraTxt = fibraFormula ? ` e ${fibraFormula} g de fibras` : '';
-      txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g ptn${fibraTxt} (quantidade recebida de acordo com o volume total prescrito)${comVO ? ', associada à via oral' : ''}.\n`;
+      txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g de proteína${fibraTxt} (quantidade recebida de acordo com o volume total prescrito)${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
@@ -3198,7 +3259,7 @@ function gerarTexto(){
     txtEduTne += `Oriento acompanhante quanto a alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeTne} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
     txtEduTne += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
     txtEduTne += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
-    blocks.push({titulo: viaParenteral ? 'Plano educacional de TNP' : 'Plano educacional de TNE', texto: txtEduTne.trim()});
+    blocks.push({titulo: viaParenteral ? 'Plano educacional de terapia nutricional parenteral' : 'Plano educacional de terapia nutricional enteral', texto: txtEduTne.trim()});
   }
 
   // Adicionar sugestão de suplementação se houver risco nutricional
@@ -3211,6 +3272,7 @@ function gerarTexto(){
   const jaTinhaNota = document.querySelector('#outputContainer .output-block');
   renderOutputBlocks(blocks);
   salvarRascunho();
+  salvarHistoricoLeito();
   incrementarContador();
   if(jaTinhaNota){
     window.scrollTo({top: scrollAntes});
@@ -3240,7 +3302,7 @@ function boldarVariaveis(t){
   // IMC com unidade (processar antes da regra genérica de número+unidade)
   t = t.replace(/(IMC[:\s]*)(\d+(?:[.,]\d+)?\s*kg\/m²)/gi, '$1<b>$2</b>');
   // valores numéricos com unidade (peso, altura, kcal, proteína, fibra, volume, taxa, HGT)
-  t = t.replace(/(\d+(?:[.,]\d+)?)\s*(kg(?!\/)|cm|kcal|ml\/h|ml|mg\/dL|g de proteína|g de fibras|g ptn|g\b)/gi, '<b>$1 $2</b>');
+  t = t.replace(/(\d+(?:[.,]\d+)?)\s*(kg(?!\/)|cm|kcal|ml\/h|ml|mg\/dL|g de proteína|g de fibras|g\b)/gi, '<b>$1 $2</b>');
   // scores (NRS, StrongKids)
   t = t.replace(/(Score\s*)(\d+)/gi, '$1<b>$2</b>');
   t = t.replace(/(Pontuação(?:\s+total)?:\s*)(\d+)/gi, '$1<b>$2</b>');
@@ -3268,6 +3330,14 @@ function removerPalavrasRepetidas(t){
 function renderOutputBlocks(blocks){
   const container = document.getElementById('outputContainer');
   container.innerHTML = '';
+
+  const totalPendencias = blocks.filter(b=>!b.isHTML).reduce((acc,b)=>acc + ((b.texto.match(/\[completar\]/g)||[]).length), 0);
+  if(totalPendencias > 0){
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'background:var(--danger-soft); border:1px solid var(--danger); color:var(--danger); border-radius:var(--radius-xs); padding:10px 12px; margin-bottom:12px; font-size:12.5px; font-weight:600;';
+    aviso.innerHTML = `⚠️ ${totalPendencias} campo(s) marcado(s) como <b>[completar]</b> — preencha os dados no formulário ou edite o texto antes de colar no prontuário.`;
+    container.appendChild(aviso);
+  }
   blocks.forEach((b, i)=>{
     const wrap = document.createElement('div');
     wrap.className = 'output-wrap';
@@ -3281,7 +3351,10 @@ function renderOutputBlocks(blocks){
       let textoLimpo = removerPalavrasRepetidas(b.texto);
       textoLimpo = textoLimpo.replace(/(\d)\.(\d)/g, '$1,$2');   // decimais no padrão pt-BR
       const textoEscapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-      const textoComNegrito = boldarVariaveis(textoEscapado);
+      let textoComNegrito = boldarVariaveis(textoEscapado);
+      /* Destaca lacunas que não podem ir para o prontuário */
+      textoComNegrito = textoComNegrito.replace(/\[completar\]/g,
+        '<mark style="background:var(--danger-soft); color:var(--danger); font-weight:700; padding:0 4px; border-radius:3px;">[completar]</mark>');
       contentHTML = textoComNegrito;
     }
     
@@ -3319,6 +3392,10 @@ function renderOutputBlocks(blocks){
   container.querySelectorAll('.output-copybtn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const el = document.getElementById(btn.dataset.target);
+      if(el.textContent.includes('[completar]')){
+        const n = (el.textContent.match(/\[completar\]/g) || []).length;
+        if(!confirm(`Este bloco ainda tem ${n} campo(s) marcado(s) como [completar].\n\nCopiar assim mesmo?`)) return;
+      }
       navigator.clipboard.writeText(el.textContent).then(()=>{
         btn.classList.add('copied');
         const original = btn.textContent;
@@ -3422,7 +3499,30 @@ document.getElementById('imprimirCatalogo').addEventListener('click', ()=>{
 });
 document.getElementById('catalogoModal').addEventListener('click', (e)=>{ if(e.target.id === 'catalogoModal') document.getElementById('catalogoModal').style.display = 'none'; });
 
+/* ═══ Campos de fórmula: valor digitado tem prioridade sobre o autocálculo ═══ */
+[['tneKcalFormula','tnePtnFormula','tneFibraFormula'], ['admKcalFormula','admPtnFormula','admFibraFormula']].forEach(grupo=>{
+  grupo.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', ()=>{
+      if(el.value.trim() !== '') marcarComoManual(el); else delete el.dataset.manual;
+    });
+  });
+});
+/* Trocar a fórmula volta ao cálculo automático (é outra dieta) */
+['tneFormulaEnteral','tneVolumePrescrito'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('change', ()=>{ if(id==='tneFormulaEnteral') limparFlagManual(['tneKcalFormula','tnePtnFormula','tneFibraFormula']); });
+});
+['admFormulaEnteral'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('change', ()=>limparFlagManual(['admKcalFormula','admPtnFormula','admFibraFormula']));
+});
+
 document.getElementById('gerarBtn').addEventListener('click', gerarTexto);
+
+/* Histórico por leito: mostra o botão quando há nota anterior daquele leito */
+document.getElementById('carregarLeitoBtn').addEventListener('click', carregarHistoricoLeito);
+document.getElementById('leito').addEventListener('input', atualizarBotaoLeito);
 
 document.getElementById('copyTudoBtn').addEventListener('click', ()=>{
   const textos = Array.from(document.querySelectorAll('.output-block')).map(el=>el.textContent).filter(Boolean);
@@ -3652,6 +3752,65 @@ function aplicarEstado(dados){
   recalc();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   HISTÓRICO POR LEITO
+   Guarda os dados do paciente ao gerar a nota. Na revisita do dia
+   seguinte, basta digitar o leito e carregar: peso, altura, idade,
+   sexo, dieta, restrições e comorbidades voltam preenchidos —
+   restando ajustar apenas o que mudou (glicemia, função intestinal).
+   Campos que mudam a cada visita NÃO são restaurados de propósito.
+   ═══════════════════════════════════════════════════════════════ */
+const CAMPOS_VOLATEIS = ['hgt','fiDetalhe','hemodialise','tneVolumeInfundido','horaLiberacao',
+  'sbm_aceitacao','sbm_ufi','observacoes'];
+
+function chaveLeito(l){ return 'nutriLeito_' + String(l).trim().toLowerCase(); }
+
+function salvarHistoricoLeito(){
+  const leito = document.getElementById('leito').value.trim();
+  if(!leito) return;
+  try{
+    const estado = coletarEstado();
+    CAMPOS_VOLATEIS.forEach(id=>{ delete estado[id]; });
+    localStorage.setItem(chaveLeito(leito), JSON.stringify({
+      salvoEm: new Date().toISOString(),
+      dados: estado
+    }));
+    atualizarBotaoLeito();
+  }catch(e){ /* localStorage indisponível — segue sem histórico */ }
+}
+
+function carregarHistoricoLeito(){
+  const leito = document.getElementById('leito').value.trim();
+  if(!leito){ alert('Digite o leito para carregar os dados da última nota.'); return; }
+  let reg = null;
+  try{ reg = JSON.parse(localStorage.getItem(chaveLeito(leito)) || 'null'); }catch(e){}
+  if(!reg || !reg.dados){
+    alert(`Nenhuma nota anterior registrada para o leito ${leito} neste navegador.`);
+    return;
+  }
+  const d = new Date(reg.salvoEm);
+  const quando = `${pad(d.getDate())}/${pad(d.getMonth()+1)} às ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if(!confirm(`Carregar os dados do leito ${leito} (última nota em ${quando})?\n\nGlicemia, função intestinal e volume infundido NÃO serão preenchidos — esses você atualiza na visita de hoje.`)) return;
+
+  const leitoAtual = document.getElementById('leito').value;
+  aplicarEstado(reg.dados);
+  document.getElementById('leito').value = leitoAtual;
+  CAMPOS_VOLATEIS.forEach(id=>{ const el=document.getElementById(id); if(el && el.type!=='select-one') el.value=''; });
+  atualizarVisibilidadePorTipo();
+  recalc();
+  showToast(`Dados do leito ${leito} carregados — confira e atualize o que mudou.`);
+}
+
+function atualizarBotaoLeito(){
+  const btn = document.getElementById('carregarLeitoBtn');
+  if(!btn) return;
+  const leito = document.getElementById('leito').value.trim();
+  let existe = false;
+  if(leito){ try{ existe = !!localStorage.getItem(chaveLeito(leito)); }catch(e){} }
+  btn.style.display = existe ? '' : 'none';
+  btn.textContent = existe ? `↩ Carregar dados do leito ${leito}` : '';
+}
+
 /* ---------- 1) rascunho automático (localStorage, última coisa digitada) ---------- */
 function salvarRascunho(){
   try{
@@ -3762,6 +3921,7 @@ try{
 }catch(e){}
 
 atualizarContadorDisplay();
+atualizarBotaoLeito();
 recalc();
 
 /* ---------- botão voltar ao topo ---------- */
