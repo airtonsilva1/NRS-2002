@@ -958,6 +958,25 @@
         <div>
           <label>Detalhe da função intestinal <span style="font-weight:normal;color:#888;">— opcional</span></label>
           <input type="text" id="fiDetalhe" placeholder="ex: 2x pastosa">
+
+      <div id="secaoSuplementoUso">
+        <div class="row">
+          <div>
+            <label>Suplemento em uso <span style="font-weight:normal;color:#888;">— sai no texto com as características</span></label>
+            <select id="supEmUso">
+              <option value="">Nenhum</option>
+            </select>
+          </div>
+          <div>
+            <label>Frequência</label>
+            <select id="supFreqUso">
+              <option value="1x">1x ao dia</option>
+              <option value="2x">2x ao dia</option>
+              <option value="3x">3x ao dia</option>
+            </select>
+          </div>
+        </div>
+      </div>
         </div>
         <div>
           <label>Hemodiálise (volume) <span style="font-weight:normal;color:#888;">— opcional</span></label>
@@ -1330,7 +1349,7 @@ const DIETA_LABEL = {
   enteral:"ENTERAL", parenteral:"PARENTERAL"
 };
 const RESTRICAO_LABEL = {
-  "":"", hipossodica:"HIPOSSÓDICA", hipoglicídica:"HIPOGLICÍDICA", irc:"INSUFICIÊNCIA RENAL CRÔNICA (TRATAMENTO CONSERVADOR)",
+  "":"", hipossodica:"HIPOSSÓDICA", hipoglicidica:"HIPOGLICÍDICA", irc:"INSUFICIÊNCIA RENAL CRÔNICA (TRATAMENTO CONSERVADOR)",
   irc_hd:"INSUFICIÊNCIA RENAL CRÔNICA (HEMODIÁLISE)",
   sem_acidos:"SEM ÁCIDOS", sem_irritantes:"SEM IRRITANTES GÁSTRICOS", sem_residuos:"SEM RESÍDUOS",
   sem_gluten:"SEM GLÚTEN", sem_lactose:"SEM LACTOSE", hipolipidica:"HIPOLIPÍDICA", antifermentativa:"ANTIFERMENTATIVA",
@@ -1864,7 +1883,7 @@ function atualizarVisibilidadePorTipo(){
   const isTNE = tipo === 'tne';
 
   document.getElementById('secaoTriagemAdmissao').style.display = isAdmissao ? '' : 'none';
-  document.getElementById('secaoRestricoesAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
+  document.getElementById('secaoRestricoesAdmissao').style.display = (isAdmissao || isEvolucaoDieta || tipo === 'revisita') ? '' : 'none';
   document.getElementById('secaoAlergiasAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoComorbidadesAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoHoraLiberacao').style.display = isEvolucaoDieta ? '' : 'none';
@@ -1879,6 +1898,7 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoFiHgt').style.display = (isAdmissao || isEvolucaoDieta) ? 'none' : '';
   document.getElementById('secaoFiDetalheHemo').style.display = (isAdmissao || isEvolucaoDieta) ? 'none' : '';
   document.getElementById('secaoRevisitaCampos').style.display = (isAdmissao || isEvolucaoDieta || isTNE) ? 'none' : '';
+  document.getElementById('secaoSuplementoUso').style.display = (tipo === 'revisita' || isEvolucaoDieta) ? '' : 'none';
 
   if(!isTNE && !isEvolucaoDieta){
     const dietaVal = document.getElementById('dieta').value;
@@ -2172,7 +2192,7 @@ function notaProgressaoDietaMedico(){
    se o nutricionista marcar o chip (mesmo sem digitar nada em "Comorbidades
    relatadas"), ela deve aparecer como comorbidade no texto da nota. */
 const RESTRICAO_COMORBIDADE = {
-  hipoglicídica: 'diabetes',
+  hipoglicidica: 'diabetes',
   hipossodica: 'hipertensão arterial sistêmica',
   hipolipidica: 'dislipidemia',
   irc: 'insuficiência renal crônica (tratamento conservador)',
@@ -2510,6 +2530,33 @@ function fraseSuplementoSelecionado(prefixo){
   }).filter(Boolean);
   if(partes.length === 0) return '';
   return `${prefixo || 'Dieta via oral associada a'} ${partes.join('; associada a ')}.`;
+}
+
+/* Menu de suplemento em uso: alimentado pelo mesmo catálogo das sugestões,
+   em ordem alfabética. Serve para o paciente que JÁ usa suplemento. */
+function preencherMenuSuplementos(){
+  const sel = document.getElementById('supEmUso');
+  if(!sel || sel.dataset.pronto === '1') return;
+  Object.entries(SUPLEMENTOS_CATALOG)
+    .sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR'))
+    .forEach(([chave,s])=>{
+      const op = document.createElement('option');
+      op.value = chave;
+      op.textContent = s.nome;
+      sel.appendChild(op);
+    });
+  sel.dataset.pronto = '1';
+}
+
+/* Frase do suplemento que o paciente já usa */
+function fraseSuplementoEmUso(){
+  const sel = document.getElementById('supEmUso');
+  if(!sel || !sel.value) return '';
+  const s = SUPLEMENTOS_CATALOG[sel.value];
+  if(!s) return '';
+  const freq = document.getElementById('supFreqUso').value || '1x';
+  const det = `${s.proteina} g de proteína e ${s.kcal} kcal por ${s.ml ? s.ml + (s.tipo==='po'?'g':'ml') : 'porção'}`;
+  return `Dieta via oral associada a suplementação ${caracteristicasSuplemento(s)}, ${freq} ao dia, ${s.nome} (${det}).`;
 }
 
 function temRiscoNutricional(){ return nrsTotal() >= 3; }
@@ -3142,6 +3189,8 @@ function gerarTexto(){
         txt += `Aceitação alimentar não avaliada no momento da visita.\n`;
       }
       txt += fraseSupR ? `${fraseSupR}\n` : `Não realizo adequações na dieta oferecida.\n`;
+      const supUsoTxt = fraseSuplementoEmUso();
+      if(supUsoTxt) txt += `${supUsoTxt}\n`;
       if(deglutR === 'nao'){
         txt += `Não relata dificuldade de deglutição em relação à consistência da dieta fornecida.\n`;
       } else if(deglutR === 'sim'){
@@ -3736,7 +3785,7 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
    salvar/abrir arquivo).
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
-  'hgtMin','hgtMax','fiDetalhe','hemodialise','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
+  'hgtMin','hgtMax','fiDetalhe','hemodialise','supEmUso','supFreqUso','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
   'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
   'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
   'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
@@ -3950,6 +3999,7 @@ try{
 
 atualizarContadorDisplay();
 atualizarBotaoLeito();
+preencherMenuSuplementos();
 recalc();
 
 /* ---------- botão voltar ao topo ---------- */
