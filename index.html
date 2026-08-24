@@ -945,8 +945,12 @@
           </select>
         </div>
         <div>
-          <label>HGT</label>
-          <input type="text" id="hgt" placeholder="ex: 98 mg/dL">
+          <label>HGT — menor valor</label>
+          <input type="text" id="hgtMin" inputmode="decimal" placeholder="ex: 117">
+        </div>
+        <div>
+          <label>HGT — maior valor</label>
+          <input type="text" id="hgtMax" inputmode="decimal" placeholder="ex: 135">
         </div>
       </div>
 
@@ -1326,7 +1330,7 @@ const DIETA_LABEL = {
   enteral:"ENTERAL", parenteral:"PARENTERAL"
 };
 const RESTRICAO_LABEL = {
-  "":"", hipossodica:"HIPOSSÓDICA", hipoglicidica:"HIPOGLICÍDICA", irc:"INSUFICIÊNCIA RENAL CRÔNICA (TRATAMENTO CONSERVADOR)",
+  "":"", hipossodica:"HIPOSSÓDICA", hipoglicídica:"HIPOGLICÍDICA", irc:"INSUFICIÊNCIA RENAL CRÔNICA (TRATAMENTO CONSERVADOR)",
   irc_hd:"INSUFICIÊNCIA RENAL CRÔNICA (HEMODIÁLISE)",
   sem_acidos:"SEM ÁCIDOS", sem_irritantes:"SEM IRRITANTES GÁSTRICOS", sem_residuos:"SEM RESÍDUOS",
   sem_gluten:"SEM GLÚTEN", sem_lactose:"SEM LACTOSE", hipolipidica:"HIPOLIPÍDICA", antifermentativa:"ANTIFERMENTATIVA",
@@ -1931,7 +1935,7 @@ function atualizarChecklist(){
   const peso = document.getElementById('peso').value;
   const altura = document.getElementById('altura').value;
   const braden = document.getElementById('braden').value;
-  const hgt = document.getElementById('hgt').value;
+  const hgt = hgtTexto();
   const funcaoIntestinal = document.getElementById('funcaoIntestinal').value;
 
   const obrigatorioPesoAltura = (tipo==='admissao');
@@ -2168,7 +2172,7 @@ function notaProgressaoDietaMedico(){
    se o nutricionista marcar o chip (mesmo sem digitar nada em "Comorbidades
    relatadas"), ela deve aparecer como comorbidade no texto da nota. */
 const RESTRICAO_COMORBIDADE = {
-  hipoglicidica: 'diabetes',
+  hipoglicídica: 'diabetes',
   hipossodica: 'hipertensão arterial sistêmica',
   hipolipidica: 'dislipidemia',
   irc: 'insuficiência renal crônica (tratamento conservador)',
@@ -2190,6 +2194,17 @@ function bradenFrase(v){
   return M[v] || v;
 }
 
+/* HGT: monta "117-135 mg/dL" a partir dos dois campos.
+   Com só um valor preenchido, sai "117 mg/dL". Sem nada, string vazia. */
+function hgtTexto(){
+  const min = document.getElementById('hgtMin').value.trim();
+  const max = document.getElementById('hgtMax').value.trim();
+  if(min && max) return `${min}-${max} mg/dL`;
+  if(min) return `${min} mg/dL`;
+  if(max) return `${max} mg/dL`;
+  return '';
+}
+
 function frasesBloqueio(){
   const chips = alergiasSelecionadas();
   const alergLivre = document.getElementById('alergias').value.trim();
@@ -2204,10 +2219,12 @@ function frasesBloqueio(){
   });
   const comorb = comorbList.join(', ');
 
-  let linha = "Não informa possuir alergia alimentar e não informa comorbidades.";
-  if(alerg && comorb) linha = `Refere alergia/restrição alimentar: ${V(alerg)}. Informa comorbidades como: ${V(comorb)}.`;
-  else if(alerg) linha = `Refere alergia/restrição alimentar: ${V(alerg)}. Não informa comorbidades.`;
-  else if(comorb) linha = `Não informa alergia alimentar. Informa comorbidades como: ${V(comorb)}.`;
+  /* Padrão institucional: "Paciente nega alergia alimentar, não refere diabetes,
+     hipertensão ou qualquer outra doença associada." */
+  let linha = "Paciente nega alergia alimentar, não refere diabetes, hipertensão ou qualquer outra doença associada.";
+  if(alerg && comorb) linha = `Paciente refere alergia alimentar: ${V(alerg)}. Refere ${V(comorb)}.`;
+  else if(alerg) linha = `Paciente refere alergia alimentar: ${V(alerg)}. Não refere diabetes, hipertensão ou qualquer outra doença associada.`;
+  else if(comorb) linha = `Paciente nega alergia alimentar. Refere ${V(comorb)}.`;
   return linha;
 }
 
@@ -2513,7 +2530,10 @@ function gerarSugestoesSuplemento(){
   const semSacarose = restricoes.includes('sem_sacarose');
   const ehIdoso = (parseInt(document.getElementById('idade').value) || 0) >= 60;
   
-  if(!temRN && !temDesnut && !temFer && !temDisf) return null;
+  /* Regra clínica: só se sugere suplemento quando há RISCO NUTRICIONAL (NRS ≥ 3)
+     ou BAIXO PESO. Ferida e disfagia sozinhas não indicam suplementação — elas
+     apenas definem QUAL suplemento, quando um dos dois critérios acima já existe. */
+  if(!temRN && !temDesnut) return null;
   
   let opcoes = [];
   let titulo = '';
@@ -2761,7 +2781,12 @@ function dietaComRestricao(calc){
   const adaptacoes = [];
   manualKeys.filter(k=>RESTRICOES_ADAPTACAO.includes(k)).forEach(k=>adaptacoes.push(RESTRICAO_LABEL[k]));
   condicoesComorbidade().forEach(a=>{ if(!adaptacoes.includes(a)) adaptacoes.push(a); });
-  if(adaptacoes.length) txt += ` ADAPTADA PARA ${adaptacoes.join(' E ')}`;
+  if(adaptacoes.length){
+    const lista = adaptacoes.length > 1
+      ? adaptacoes.slice(0,-1).join(', ') + ' E ' + adaptacoes[adaptacoes.length-1]
+      : adaptacoes[0];
+    txt += `, ADAPTADA PARA ${lista}`;
+  }
 
   const semList = [];
   manualKeys.filter(k=>RESTRICOES_SEM.includes(k)).forEach(k=>{
@@ -2887,7 +2912,7 @@ function gerarTexto(){
   const funcaoIntestinalVal = document.getElementById('funcaoIntestinal').value;
   const FI_ADMISSAO = {presente:"Função intestinal presente.", ausente:"Função intestinal ausente.", nao_avaliado:"Função intestinal não avaliada."};
   const FI_REVISITA = {presente:"presente", ausente:"ausente", nao_avaliado:"sem registro"};
-  const hgt = document.getElementById('hgt').value.trim();
+  const hgt = hgtTexto();
   const horaLiberacao = document.getElementById('horaLiberacao').value.trim();
 
   const andarSel = document.getElementById('andar').value;
@@ -2906,7 +2931,7 @@ function gerarTexto(){
     } else {
       nrsScore = nrsTotal();
       nrsTexto = nrsScore>=3 ? 'com risco nutricional' : 'sem risco nutricional';
-      tituloTriagem = 'NRS - 2002';
+      tituloTriagem = 'NRS-2002';
     }
 
     let txtNrs = `#Pela nutrição, ${hora}.\n`;
@@ -3015,7 +3040,7 @@ function gerarTexto(){
       txtEvolucao += `Oriento quanto características da dieta liberada, acompanhante compreende as informações prestadas.\n`;
       txtEvolucao += `Dietoterapia ajustada aos efeitos colaterais e interações medicamentosas. Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     } else {
-      txtEvolucao += `Planejamento terapêutico: O paciente segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())} e conforme preferências.${notaProgressaoDietaMedico()}\n`;
+      txtEvolucao += `Planejamento terapêutico: O paciente segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())}, conforme preferências.${notaProgressaoDietaMedico()}\n`;
       if(fraseSup) txtEvolucao += `${fraseSup}\n`;
       txtEvolucao += `VET PROPOSTO diário: ${calc.vet !== null ? calc.vet : 'sem registro'} kcal (${calc.perfil.kcal} kcal/kg) e proteínas: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`;
       txtEvolucao += `Oriento quanto características da dieta liberada, paciente e acompanhante compreenderam as informações prestadas.\n`;
@@ -3030,25 +3055,25 @@ function gerarTexto(){
       tituloMulti = 'Plano educacional (multidisciplinar) — jejum';
       txtMulti += `Oriento paciente e acompanhante quanto jejum a critério médico para procedimento cirúrgico. Oriento quanto marcação da primeira refeição ser realizada exclusivamente com a nutricionista e que a mesma orientará quanto características da dieta prescrita pela equipe médica.\n`;
       txtMulti += `Planejamento terapêutico: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n\n`;
-      txtMulti += `Oriento paciente quanto a alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento paciente quanto à alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
       txtMulti += `Oriento paciente e acompanhante sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
-      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+      txtMulti += `Mantenho setor à disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     } else if(isEnteral){
       tituloMulti = 'Plano educacional de terapia nutricional enteral';
       const vetEmtnAdm3 = document.getElementById('admVetEmtn').value;
       txtMulti += `Oriento acompanhante quanto progressão da terapia nutricional enteral e suas características de ${descreverFormulaEnteralAdm()}.\n`;
       txtMulti += vetEmtnAdm3 ? `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtnAdm3} kcal;\n\n` : `Planejamento terapêutico: será definido VET proposto final conforme EMTN;\n\n`;
-      txtMulti += `Oriento acompanhante quanto a alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento acompanhante quanto à alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
       txtMulti += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
-      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+      txtMulti += `Mantenho setor à disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     } else if(isParenteral){
       tituloMulti = 'Plano educacional de terapia nutricional parenteral';
       const vetEmtnAdm4 = document.getElementById('admVetEmtn').value;
       txtMulti += `Oriento paciente e acompanhante quanto terapia nutricional parenteral e suas características, ${descreverFormulaParenteralAdm()}.\n`;
       txtMulti += vetEmtnAdm4 ? `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtnAdm4} kcal.\n\n` : `Planejamento terapêutico: será definido VET proposto final conforme EMTN;\n\n`;
-      txtMulti += `Oriento acompanhante quanto a alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento acompanhante quanto à alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
       txtMulti += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
-      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+      txtMulti += `Mantenho setor à disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     } else {
       tituloMulti = 'Plano educacional (multidisciplinar) — via oral liberada';
       const tempVal = document.getElementById('temperatura').value;
@@ -3056,9 +3081,9 @@ function gerarTexto(){
       txtMulti += `Oriento paciente e acompanhante quanto início da dieta via oral na consistência ${V(dietaTxt.toLowerCase())}${tempTxt} e oriento quanto suas características.${notaProgressaoDietaMedico()}\n`;
       if(fraseSup) txtMulti += `${fraseSup}\n`;
       txtMulti += `Planejamento terapêutico: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n\n`;
-      txtMulti += `Oriento paciente quanto a alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
+      txtMulti += `Oriento paciente quanto à alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
       txtMulti += `Oriento paciente e acompanhante sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
-      txtMulti += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+      txtMulti += `Mantenho setor à disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     }
 
     /* ===== BLOCO 3: NRS 2002 / STRONGKIDS ===== */
@@ -3118,16 +3143,16 @@ function gerarTexto(){
       }
       txt += fraseSupR ? `${fraseSupR}\n` : `Não realizo adequações na dieta oferecida.\n`;
       if(deglutR === 'nao'){
-        txt += `Não relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n`;
+        txt += `Não relata dificuldade de deglutição em relação à consistência da dieta fornecida.\n`;
       } else if(deglutR === 'sim'){
-        txt += `Relata dificuldade de deglutição em relação a consistência da dieta fornecida.\n`;
+        txt += `Relata dificuldade de deglutição em relação à consistência da dieta fornecida.\n`;
       }
     }
 
     txt += `\nNas últimas 24h:\n`;
     txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${fiDetR?`, ${fiDetR}`:''};\n`;
     txt += `- HGT: ${hgt || 'sem registro'};\n`;
-    txt += `- Hemodiálise: ${hemoR || 'sem registro'};\n`;
+    if(hemoR){ txt += `- Hemodiálise: ${hemoR};\n`; }
     txt += `\nEscala Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n`;
 
     if(!isJejum && !isEnteral && !isParenteral){
@@ -3160,7 +3185,7 @@ function gerarTexto(){
     const pronomeMesmo = sexoVal === 'M' ? 'o mesmo' : 'a mesma';
     let txt2 = `PLANO EDUCACIONAL VIA ORAL\n`;
     txt2 += `Oriento paciente e acompanhante quanto início da dieta via oral na consistência ${V(dietaTxt.toLowerCase())}${liberacaoTxt} e oriento quanto suas características.${notaProgressaoDietaMedico()}\n`;
-    txt2 += `Oriento paciente quanto a alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeMesmo} compreende as informações prestadas.\n`;
+    txt2 += `Oriento paciente quanto à alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeMesmo} compreende as informações prestadas.\n`;
     txt2 += `Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n`;
     txt2 += `Oriento paciente e acompanhante sobre o frigobar, que é para uso exclusivo do acompanhante.\n`;
     txt2 += `Segue em acompanhamento.`;
@@ -3207,7 +3232,7 @@ function gerarTexto(){
       txt += `\nNas últimas 24h:\n`;
       txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
       txt += `- HGT: ${hgt || 'sem registro'};\n`;
-      txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim() || 'sem registro'};\n`;
+      { const hd = document.getElementById('hemodialise').value.trim(); if(hd){ txt += `- Hemodiálise: ${hd};\n`; } }
       txt += `Escala Braden: Risco ${bradenTxt} para lesão por pressão.\n\n`;
       txt += `Meta Calórica: segundo EMTN (VET proposto ${vetEmtn} kcal).\n`;
       txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
@@ -3241,7 +3266,7 @@ function gerarTexto(){
       txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito.\n`;
       txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''}.\n`;
       txt += `- HGT: ${hgt || 'sem registro'};\n`;
-      txt += `- Hemodiálise: ${document.getElementById('hemodialise').value.trim() || 'sem registro'};\n`;
+      { const hd = document.getElementById('hemodialise').value.trim(); if(hd){ txt += `- Hemodiálise: ${hd};\n`; } }
       txt += `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em progressão.\n\n`;
       txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
       txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
@@ -3258,9 +3283,9 @@ function gerarTexto(){
       txtEduTne += `Oriento acompanhante quanto progressão da terapia nutricional enteral e suas características, via ${via}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína.\n`;
       txtEduTne += `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtn} kcal;\n\n`;
     }
-    txtEduTne += `Oriento acompanhante quanto a alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeTne} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
+    txtEduTne += `Oriento acompanhante quanto à alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeTne} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
     txtEduTne += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
-    txtEduTne += `Mantenho setor a disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+    txtEduTne += `Mantenho setor à disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
     blocks.push({titulo: viaParenteral ? 'Plano educacional de terapia nutricional parenteral' : 'Plano educacional de terapia nutricional enteral', texto: txtEduTne.trim()});
   }
 
@@ -3351,7 +3376,7 @@ function renderOutputBlocks(blocks){
       contentHTML = b.html;
     } else {
       let textoLimpo = removerPalavrasRepetidas(b.texto);
-      textoLimpo = textoLimpo.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
+      textoLimpo = textoLimpo.replace(/\n{2,}/g, '\n').replace(/[ \t]+\n/g, '\n').trim();
       textoLimpo = textoLimpo.replace(/(\d)\.(\d)/g, '$1,$2');   // decimais no padrão pt-BR
       const textoEscapado = textoLimpo.replace(/&/g,'&amp;').replace(/</g,'&lt;');
       let textoComNegrito = boldarVariaveis(textoEscapado);
@@ -3576,7 +3601,7 @@ function montarExportacao(){
     "Alergias": alergTudo,
     "Preferências": document.getElementById('sbm_preferencias').value.trim(),
     "VET e Proteína": `VET: ${calc.vet} kcal | PTN: ${calc.ptn} g`,
-    "HGT": document.getElementById('hgt').value.trim(),
+    "HGT": hgtTexto(),
     "UFI": document.getElementById('sbm_ufi').value.trim(),
     "Aceitação": document.getElementById('sbm_aceitacao').value.trim(),
     "Diagnóstico de Internação": expandirTextoLivre(document.getElementById('sbm_diagnostico').value.trim()),
@@ -3711,7 +3736,7 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
    salvar/abrir arquivo).
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
-  'hgt','fiDetalhe','hemodialise','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
+  'hgtMin','hgtMax','fiDetalhe','hemodialise','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
   'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
   'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
   'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
@@ -3763,7 +3788,7 @@ function aplicarEstado(dados){
    restando ajustar apenas o que mudou (glicemia, função intestinal).
    Campos que mudam a cada visita NÃO são restaurados de propósito.
    ═══════════════════════════════════════════════════════════════ */
-const CAMPOS_VOLATEIS = ['hgt','fiDetalhe','hemodialise','tneVolumeInfundido','horaLiberacao',
+const CAMPOS_VOLATEIS = ['hgtMin','hgtMax','fiDetalhe','hemodialise','tneVolumeInfundido','horaLiberacao',
   'sbm_aceitacao','sbm_ufi','observacoes'];
 
 function chaveLeito(l){ return 'nutriLeito_' + String(l).trim().toLowerCase(); }
