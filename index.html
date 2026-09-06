@@ -809,11 +809,11 @@
         <div class="row">
           <div>
             <label>Kcal da fórmula</label>
-            <input type="number" id="admKcalFormula" step="0.1" placeholder="ex: 800">
+            <input type="text" inputmode="decimal" id="admKcalFormula" placeholder="ex: 800">
           </div>
           <div>
             <label>Proteína da fórmula (g)</label>
-            <input type="number" id="admPtnFormula" step="0.1" placeholder="ex: 30.4">
+            <input type="text" inputmode="decimal" id="admPtnFormula" placeholder="ex: 30,4">
           </div>
         </div>
       </div>
@@ -849,7 +849,7 @@
 
       <div id="secaoVetEmtnAdm" style="display:none;">
         <label>VET proposto pela EMTN (kcal)</label>
-        <input type="number" id="admVetEmtn" step="0.1" placeholder="ex: 1532.7">
+        <input type="text" inputmode="decimal" id="admVetEmtn" placeholder="ex: 1532,7">
       </div>
       </div>
 
@@ -1101,11 +1101,11 @@
       <div class="row">
         <div>
           <label>Kcal da fórmula (kcal)</label>
-          <input type="number" id="tneKcalFormula" step="0.1" placeholder="ex: 800">
+          <input type="text" inputmode="decimal" id="tneKcalFormula" placeholder="ex: 800">
         </div>
         <div>
           <label>Proteína da fórmula (g)</label>
-          <input type="number" id="tnePtnFormula" step="0.1" placeholder="ex: 30.4">
+          <input type="text" inputmode="decimal" id="tnePtnFormula" placeholder="ex: 30,4">
         </div>
       </div>
       <label>Fibras (g) <span style="font-weight:normal;color:#888;">— só calculado automaticamente se a fórmula tiver dado confirmado</span></label>
@@ -1113,7 +1113,12 @@
       <div class="hint" id="tneOverfeedingHint"></div>
 
       <label>VET proposto pela EMTN (kcal) <span style="font-weight:normal;color:#888;">— se vazio, usa o VET calculado</span></label>
-      <input type="number" id="tneVetEmtn" step="0.1" placeholder="ex: 1532.7">
+      <input type="text" inputmode="decimal" id="tneVetEmtn" placeholder="ex: 1532,7">
+      <label>Estágio da dieta</label>
+      <select id="tneEstagio">
+        <option value="progressão">Em progressão</option>
+        <option value="VET pleno">Em VET pleno</option>
+      </select>
 
       <label>Volume infundido nas últimas 24h (ml)</label>
       <input type="number" id="tneVolumeInfundido" placeholder="ex: 672">
@@ -3228,9 +3233,9 @@ function gerarTexto(){
       }
     }
 
-    txt += `\nNas últimas 24h:\n`;
+    txt += `\nNas últimas 24 h:\n`;
     txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${fiDetR?`, ${fiDetR}`:''};\n`;
-    txt += `- HGT: ${hgt || 'sem registro'};\n`;
+    txt += `- HGT: ${hgt || 'sem registro de aferição pela enfermagem'};\n`;
     if(hemoR){ txt += `- Hemodiálise: ${hemoR};\n`; }
     txt += `\nEscala Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n`;
 
@@ -3284,6 +3289,13 @@ function gerarTexto(){
     const kcalFormula = document.getElementById('tneKcalFormula').value || (calc.vet!==null ? calc.vet : '[completar]');
     const ptnFormula = document.getElementById('tnePtnFormula').value || (calc.ptn!==null ? calc.ptn : '[completar]');
     const vetEmtn = document.getElementById('tneVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
+    const modoInfusaoRaw = document.getElementById('tneModoInfusao').value;
+    const modoInfusao = MODO_INFUSAO_TXT[modoInfusaoRaw] || modoInfusaoRaw;
+    const volumeInfundido = document.getElementById('tneVolumeInfundido').value;
+    const numBR = v => parseFloat(String(v).replace(',', '.'));
+    const percInfusao = (volumePrescrito && volumeInfundido)
+      ? (Math.round((numBR(volumeInfundido)/numBR(volumePrescrito))*1000)/10).toFixed(1).replace('.', ',')
+      : '[completar]';
     const bradenTxt = BRADEN_RISCO_TXT[braden] || braden;
     const comVO = segVal('segTneVO')==='sim';
     const dietaOralTxt = comVO ? DIETA_LABEL[document.getElementById('tneDietaOral').value] : '';
@@ -3300,35 +3312,32 @@ function gerarTexto(){
       const tipoPar = fParVal==='outra_parenteral' ? '' : FORMULAS_PARENTERAIS[fParVal].tipo;
       const descFormula = tipoPar ? `${nomeFormula} — ${tipoPar}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)` : `${nomeFormula}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)`;
 
-      txt += `Paciente com dieta parenteral (${descFormula}), via ${VIA_PARENTERAL_TXT[via] || via}${comVO ? ', associada à via oral' : ''}.\n`;
+      txt += `Recebendo nutrição parenteral${fParVal!=='outra_parenteral'?` (${nomeFormula})`:(fParOutra?` (${fParOutra})`:'')}, via ${VIA_PARENTERAL_TXT[viaCodigoTne] || via}, em ${modoInfusao}, ${volumePrescrito} ml/dia à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
-      txt += `Segue percorrendo ${taxaInfusao} ml/h, totalizando ${volumePrescrito} ml.\n\n`;
-      txt += `\nNas últimas 24h:\n`;
+      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal.\n`;
+      txt += `\nNas últimas 24 h:\n`;
+      txt += `- Volume Infundido: ${volumeInfundido || '[completar]'} ml, sendo ${percInfusao}% do volume prescrito;\n`;
       txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
-      txt += `- HGT: ${hgt || 'sem registro'};\n`;
+      txt += `- HGT: ${hgt || 'sem registro de aferição pela enfermagem'};\n`;
       { const hd = document.getElementById('hemodialise').value.trim(); if(hd){ txt += `- Hemodiálise: ${hd};\n`; } }
+      const estagioP = document.getElementById('tneEstagio').value;
       txt += braden === 'sem risco'
-        ? `Escala Braden: Sem risco para lesão por pressão.\n\n`
+        ? `\nSem risco para lesão por pressão, segundo escala de Braden, dieta em ${estagioP}.\n\n`
         : (braden === 'sem registro'
-            ? `Escala Braden: sem registro.\n\n`
-            : `Escala Braden: Risco ${bradenTxt} para lesão por pressão.\n\n`);
-      txt += `Meta Calórica: segundo EMTN (VET proposto ${vetEmtn} kcal).\n`;
-      txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
-      txt += `Classificado como nível de assistência ${calc.nivel}, mantendo acompanhamento da nutrição e EMTN.`;
+            ? `\nEscala de Braden sem registro, dieta em ${estagioP}.\n\n`
+            : `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em ${estagioP}.\n\n`);
+      txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
+      txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
     } else {
-      const modoInfusaoRaw = document.getElementById('tneModoInfusao').value;
-      const modoInfusao = MODO_INFUSAO_TXT[modoInfusaoRaw] || modoInfusaoRaw;
       const fEntVal = document.getElementById('tneFormulaEnteral').value;
       const fEntOutra = document.getElementById('tneFormulaEnteralOutra').value.trim();
       const nomeFormula = fEntVal==='outra_enteral' ? (fEntOutra || '[completar]') : FORMULAS_ENTERAIS[fEntVal].nome;
       const tipoEnt = fEntVal==='outra_enteral' ? '' : FORMULAS_ENTERAIS[fEntVal].tipo;
-      const volumeInfundido = document.getElementById('tneVolumeInfundido').value;
-      const percInfusao = (volumePrescrito && volumeInfundido) ? (Math.round((volumeInfundido/volumePrescrito)*1000)/10).toFixed(1).replace('.', ',') : '[completar]';
 
       const dadosFormEnt = fEntVal!=='outra_enteral' ? FORMULAS_ENTERAIS[fEntVal] : null;
       const totalTxtEnt = totalFormulaTexto(dadosFormEnt);
@@ -3337,24 +3346,29 @@ function gerarTexto(){
       if(totalTxtEnt) descFormula += ` — ${totalTxtEnt}`;
       const fibraFormula = document.getElementById('tneFibraFormula').value;
       const fibraTxt = fibraFormula ? ` e ${fibraFormula} g de fibras` : '';
-      txt += `Recebendo dieta enteral ${descFormula}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, sendo ${kcalFormula} kcal e ${ptnFormula} g de proteína${fibraTxt} (quantidade recebida de acordo com o volume total prescrito)${comVO ? ', associada à via oral' : ''}.\n`;
+      /* Redação da folha institucional: tipo de formulação + via + modo + volume/taxa + kcal/proteína.
+         O nome comercial entra entre parênteses só quando a fórmula foi escolhida na lista. */
+      const marca = (fEntVal!=='outra_enteral' && nomeFormula) ? ` (${nomeFormula})` : (fEntOutra ? ` (${fEntOutra})` : '');
+      const formulacao = tipoEnt ? tipoEnt.split(',')[0].trim() : 'polimérica';
+      txt += `Recebendo dieta enteral ${formulacao}${marca}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína${fibraTxt}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
-      txt += `Planejamento terapêutico: VET proposto diário pela EMTN ${vetEmtn} kcal.\n\n`;
-      txt += `\nNas últimas 24h:\n`;
-      txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito.\n`;
-      txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''}.\n`;
-      txt += `- HGT: ${hgt || 'sem registro'};\n`;
+      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal.\n`;
+      txt += `\nNas últimas 24 h:\n`;
+      txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito;\n`;
+      txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
+      txt += `- HGT: ${hgt || 'sem registro de aferição pela enfermagem'};\n`;
       { const hd = document.getElementById('hemodialise').value.trim(); if(hd){ txt += `- Hemodiálise: ${hd};\n`; } }
+      const estagio = document.getElementById('tneEstagio').value;
       txt += braden === 'sem risco'
-        ? `\nSem risco para lesão por pressão, segundo escala de Braden, dieta em progressão.\n\n`
+        ? `\nSem risco para lesão por pressão, segundo escala de Braden, dieta em ${estagio}.\n\n`
         : (braden === 'sem registro'
-            ? `\nEscala de Braden sem registro, dieta em progressão.\n\n`
-            : `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em progressão.\n\n`);
+            ? `\nEscala de Braden sem registro, dieta em ${estagio}.\n\n`
+            : `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em ${estagio}.\n\n`);
       txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
       txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
     }
@@ -3364,7 +3378,7 @@ function gerarTexto(){
     const pronomeTne = sexoVal === 'M' ? 'o mesmo' : 'a mesma';
     let txtEduTne = '';
     if(viaParenteral){
-      txtEduTne += `Oriento paciente e acompanhante quanto terapia nutricional parenteral e suas características, percorrendo em ${taxaInfusao} ml/h (${volumePrescrito} ml/dia), possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína.\n`;
+      txtEduTne += `Oriento paciente e acompanhante quanto terapia nutricional parenteral e suas características, percorrendo em ${modoInfusao} à ${taxaInfusao} ml/h (${volumePrescrito} ml/dia), possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína.\n`;
       txtEduTne += `Planejamento terapêutico: VET proposto final definido pela EMTN de ${vetEmtn} kcal.\n\n`;
     } else {
       txtEduTne += `Oriento acompanhante quanto progressão da terapia nutricional enteral e suas características, via ${via}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína.\n`;
@@ -3824,7 +3838,7 @@ document.getElementById('limparBtn').addEventListener('click', resetTudo);
    salvar/abrir arquivo).
 ===================================================================== */
 const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','comorbidades','alergias',
-  'hgtMin','hgtMax','fiDetalhe','hemodialise','supEmUso','supFreqUso','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
+  'hgtMin','hgtMax','fiDetalhe','hemodialise','tneEstagio','supEmUso','supFreqUso','horaLiberacao','vetManual','ptnManual','sbm_preferencias','sbm_ufi','sbm_aceitacao',
   'sbm_diagnostico','sbm_hda','sbm_hpp','sbm_passagem','skQ1Detalhe','skQ3Detalhe','skIdadeMeses','tneDesmameDetalhe',
   'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
   'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
