@@ -1120,12 +1120,23 @@
       <div class="hint" id="tnePercInfusaoHint"></div>
       </div>
 
+      <div id="secaoProxEvolucao">
+      <label>Próxima evolução <span style="font-weight:normal;color:#888;">— guia de bolso: primário 7d · secundário 5d · terciário 3d</span></label>
+      <select id="intervaloEvolucao">
+        <option value="auto">Automático — conforme nível de assistência</option>
+        <option value="3">A cada 3 dias — nível terciário</option>
+        <option value="5">A cada 5 dias — nível secundário</option>
+        <option value="7">A cada 7 dias — nível primário</option>
+      </select>
+      <div class="hint" style="margin:6px 0 0;">A visita é diária para todos. A evolução também deve ser feita sempre que houver intervenção nutricional (início de suplementação, liberação de dieta, evolução de consistência).</div>
+      </div>
+
       <div id="secaoTempoInternacao">
       <label>Tempo de internação (regra de reavaliação NRS)</label>
       <select id="tempoInternacao">
-        <option value="7">Primeiro mês — reavaliar a cada 7 dias</option>
-        <option value="15">Entre 1 e 2 meses — reavaliar a cada 15 dias</option>
-        <option value="30">Acima de 2 meses — reavaliar mensalmente</option>
+        <option value="7">Primeiro mês de internação — a cada 7 dias</option>
+        <option value="15">Internação maior que 1 mês — a cada 15 dias</option>
+        <option value="30">Internação maior que 2 meses — mensalmente</option>
       </select>
       </div>
 
@@ -1370,6 +1381,15 @@ function classificaIMC(imc, idade){
   if(imc<35) return "OBESIDADE GRAU 1 (IMC adulto)";
   if(imc<40) return "OBESIDADE GRAU 2 (IMC adulto)";
   return "OBESIDADE GRAU 3 (IMC adulto)";
+}
+
+/* Intervalo de evolução: usa o escolhido no menu; em "Automático",
+   segue o guia de bolso pelo nível de assistência. */
+function diasEvolucaoEscolhido(nivel){
+  const el = document.getElementById('intervaloEvolucao');
+  const v = el ? el.value : 'auto';
+  if(v && v !== 'auto') return parseInt(v);
+  return diasPorNivel(nivel);
 }
 
 function diasPorNivel(nivel){
@@ -1893,6 +1913,7 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoDietaPrincipal').style.display = isTNE ? 'none' : '';
   document.getElementById('secaoPerfilCalorico').style.display = (isTNE || isEvolucaoDieta) ? 'none' : '';
   document.getElementById('secaoTempoInternacao').style.display = (isTNE || isEvolucaoDieta) ? 'none' : '';
+  document.getElementById('secaoProxEvolucao').style.display = isEvolucaoDieta ? 'none' : '';
   document.getElementById('secaoBraden').style.display = isEvolucaoDieta ? 'none' : '';
   /* Dados das últimas 24h só fazem sentido em revisita/reavaliação — não na admissão */
   document.getElementById('secaoFiHgt').style.display = (isAdmissao || isEvolucaoDieta) ? 'none' : '';
@@ -2083,7 +2104,7 @@ function recalc(){
 
   const auto = nivelAuto();
   const nivel = auto.nivel;
-  const dias = diasPorNivel(nivel);
+  const dias = diasEvolucaoEscolhido(nivel);
   const proxEvolucao = new Date(); proxEvolucao.setDate(proxEvolucao.getDate()+dias);
 
   const diasReaval = parseInt(document.getElementById('tempoInternacao').value);
@@ -2173,7 +2194,7 @@ document.getElementById('leito').addEventListener('input', function(){
     hint.style.display = 'none';
   }
 });
-['andar','dieta','tempoInternacao'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
+['andar','dieta','tempoInternacao','intervaloEvolucao'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
 document.querySelectorAll('#chipRestricoes input[type=checkbox]').forEach(cb=>cb.addEventListener('change', recalc));
 selPerfil.addEventListener('change', recalc);
 
@@ -2488,6 +2509,7 @@ const SUPLEMENTOS_CATALOG = {
   'diasip': { nome: 'Diasip Baunilha', codigo: '544605', tipo: 'bebida', ml: 200, proteina: 9, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Diabetes (IG baixo)' },
   'fresubin_creme': { nome: 'Fresubin Creme (Praline ou Frutas da Floresta)', codigo: '1015141', tipo: 'creme', ml: 125, proteina: 12.5, kcal: 187, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 1, lactose: 'contem', para: 'Disfagia (colher; 2 sabores)' },
   'fresubin_32': { nome: 'Fresubin 3.2kcal Baunilha', codigo: '1021649', tipo: 'bebida', ml: 125, proteina: 10, kcal: 400, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Desnutrição severa (máx. kcal/volume)' },
+  'fresubin_lp': { nome: 'Fresubin LP', codigo: '[CONFIRMAR]', tipo: 'bebida', ml: 200, proteina: 20, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'verificar', para: 'Hiperproteico normocalórico (proteína alta sem excesso de calorias)' },
   'fresubin_jucy': { nome: 'Fresubin Jucy Drink Maçã', codigo: '15035', tipo: 'bebida', ml: 200, proteina: 8, kcal: 300, HP: 0, HC: 1, NP: 1, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Sem lactose e sem gordura (clarificado)' },
   'gan': { nome: 'GAN Cicatrização Sachê', codigo: '1021918', tipo: 'po', ml: 35, proteina: 9, kcal: 150, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 1, praline: 0, lactose: 'verificar', para: 'Cicatrização concentrada' },
   'glucerna': { nome: 'Glucerna SR Baunilha', codigo: '1025776', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes (IG baixo)' },
@@ -2580,6 +2602,11 @@ function gerarSugestoesSuplemento(){
   /* Regra clínica: só se sugere suplemento quando há RISCO NUTRICIONAL (NRS ≥ 3)
      ou BAIXO PESO. Ferida e disfagia sozinhas não indicam suplementação — elas
      apenas definem QUAL suplemento, quando um dos dois critérios acima já existe. */
+  /* Paciente sem dieta via oral liberada (jejum/dieta zero, enteral ou parenteral)
+     não recebe sugestão de suplemento ORAL — não há via para ofertar. */
+  const dietaAtual = document.getElementById('dieta').value;
+  if(dietaAtual === 'zero' || dietaAtual === 'enteral' || dietaAtual === 'parenteral') return null;
+
   if(!temRN && !temDesnut) return null;
   
   let opcoes = [];
@@ -2613,7 +2640,7 @@ function gerarSugestoesSuplemento(){
     avisos.push('Alternativa: suplemento líquido + espessante Resource Thicken Up Clear (cód. 9881) na consistência prescrita pela fonoaudiologia.');
   }
   else if(temFer){
-    opcoes = [ SUPLEMENTOS_CATALOG.cubitan, SUPLEMENTOS_CATALOG.impact, SUPLEMENTOS_CATALOG.gan ];
+    opcoes = [ SUPLEMENTOS_CATALOG.cubitan, SUPLEMENTOS_CATALOG.impact, SUPLEMENTOS_CATALOG.gan, SUPLEMENTOS_CATALOG.fresubin_lp ];
     titulo = 'Suplementação — Cicatrização (arginina + zinco)';
     if(temDesnut){
       opcoes.push(SUPLEMENTOS_CATALOG.whey_vitafor);
@@ -2861,7 +2888,7 @@ const NIVEL_PT = {primario:"primário", secundario:"secundário", terciario:"ter
 function calcSemPeso(){
   const auto = nivelAuto();
   const nivel = auto.nivel;
-  const dias = diasPorNivel(nivel);
+  const dias = diasEvolucaoEscolhido(nivel);
   const proxEvolucao = new Date(); proxEvolucao.setDate(proxEvolucao.getDate()+dias);
   const diasReaval = parseInt(document.getElementById('tempoInternacao').value);
   const proxReavaliacao = new Date(); proxReavaliacao.setDate(proxReavaliacao.getDate()+diasReaval);
@@ -2968,16 +2995,19 @@ function gerarTexto(){
   /* ---------------- ADMISSÃO (3 blocos separados) ---------------- */
   if(tipoNota==='admissao'){
     const menor = idadeMenor();
-    let nrsScore, nrsTexto, tituloTriagem;
+    let nrsScore, nrsTexto, tituloTriagem, nrsTextoEvolucao;
 
     if(menor){
       nrsScore = strongKidsScore();
       const skClass = classificaStrongKids(nrsScore);
       nrsTexto = skClass.label;
+      nrsTextoEvolucao = skClass.label;
       tituloTriagem = 'STRONGKIDS';
     } else {
       nrsScore = nrsTotal();
       nrsTexto = nrsScore>=3 ? 'com risco nutricional' : 'sem risco nutricional';
+      /* A folha usa uma redação diferente na linha da evolução */
+      nrsTextoEvolucao = nrsScore>=3 ? 'apresenta risco nutricional' : 'não apresenta risco nutricional';
       tituloTriagem = 'NRS-2002';
     }
 
@@ -3000,7 +3030,7 @@ function gerarTexto(){
     } else {
       txtNrs += `Planejamento terapêutico: VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg${calc.perfil.base==='ideal'?' peso ideal':''}) e ${calc.ptn} g (${calc.perfil.ptn} g de proteína/kg${calc.perfil.base==='ideal'?' peso ideal':''})\n`;
     }
-    txtNrs += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}`;
+    txtNrs += `Próxima avaliação: ${formatDate(calc.proxEvolucao)}`;
 
     if(menor){
       const q1 = segVal('segSkQ1')==='sim';
@@ -3064,7 +3094,7 @@ function gerarTexto(){
       txtEvolucao += `Em visita de admissão realizo ${menor?'StrongKids':'NRS-2002'}.\n`;
     }
     txtEvolucao += `Peso informado ${peso} kg – IMC ${calc.imc.toFixed(2).replace('.',',')} kg/m², Altura informada ${altura} cm.\n`;
-    txtEvolucao += `${tituloTriagem} apresentou score ${nrsScore} - ${nrsTexto}, conforme resultado ${menor?'do StrongKids':'da NRS-2002'}.\n`;
+    txtEvolucao += `${tituloTriagem} apresentou score ${nrsScore} - ${nrsTextoEvolucao}, conforme resultado ${menor?'do StrongKids':'da NRS-2002'}.\n`;
     txtEvolucao += `Escala de Braden: ${braden === 'sem registro' ? 'sem registro' : bradenFrase(braden)}.\n`;
     txtEvolucao += `${frasesBloqueio()}\n`;
     if(funcaoIntestinalVal === 'nao_avaliado'){
@@ -3153,7 +3183,7 @@ function gerarTexto(){
     } else {
       txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`;
     }
-    txtNrsFinal += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}\n`;
+    txtNrsFinal += `Próxima avaliação: ${formatDate(calc.proxEvolucao)}\n`;
     txtNrsFinal += `Segue em acompanhamento nutricional.`;
 
     if(menor){ txtNrsFinal += `\n\n` + txtNrs.split('\n').slice(6).join('\n'); }
@@ -3210,7 +3240,7 @@ function gerarTexto(){
         : `Planejamento terapêutico: mantido plano nutricional já estabelecido, sem alterações.\n`;
     }
     txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
-    txt += `Próxima avaliação: ${formatDate(calc.proxReavaliacao)}\n`;
+    txt += `Próxima avaliação: ${formatDate(calc.proxEvolucao)}\n`;
     txt += `Classificado como nível de assistência ${calc.nivel}, mantendo acompanhamento da nutrição${(isEnteral||isParenteral)?' e da EMTN':''}.`;
 
     blocks.push({titulo:null, texto: txt.trim()});
@@ -3224,7 +3254,7 @@ function gerarTexto(){
     const liberacaoTxt = horaLiberacao ? ` para ${horaLiberacao}` : '';
     txt1 += `Dieta oral liberada: ${V(dietaTxt.toLowerCase())}${liberacaoTxt}, conforme prescrição médica.${notaProgressaoDietaMedico()}\n`;
     txt1 += `${frasesBloqueio()}\n`;
-    txt1 += `Oriento paciente e acompanhante em relação as características da dieta.\n`;
+    txt1 += `Oriento paciente e acompanhante em relação às características da dieta.\n`;
     if(funcaoIntestinalVal !== 'nao_avaliado'){ txt1 += `${FI_ADMISSAO[funcaoIntestinalVal]}\n`; }
     if(hgt){ txt1 += `HGT: ${hgt}\n`; }
     txt1 += `Segue em acompanhamento.`;
@@ -3282,7 +3312,11 @@ function gerarTexto(){
       txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
       txt += `- HGT: ${hgt || 'sem registro'};\n`;
       { const hd = document.getElementById('hemodialise').value.trim(); if(hd){ txt += `- Hemodiálise: ${hd};\n`; } }
-      txt += `Escala Braden: Risco ${bradenTxt} para lesão por pressão.\n\n`;
+      txt += braden === 'sem risco'
+        ? `Escala Braden: Sem risco para lesão por pressão.\n\n`
+        : (braden === 'sem registro'
+            ? `Escala Braden: sem registro.\n\n`
+            : `Escala Braden: Risco ${bradenTxt} para lesão por pressão.\n\n`);
       txt += `Meta Calórica: segundo EMTN (VET proposto ${vetEmtn} kcal).\n`;
       txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
       txt += `Classificado como nível de assistência ${calc.nivel}, mantendo acompanhamento da nutrição e EMTN.`;
@@ -3294,7 +3328,7 @@ function gerarTexto(){
       const nomeFormula = fEntVal==='outra_enteral' ? (fEntOutra || '[completar]') : FORMULAS_ENTERAIS[fEntVal].nome;
       const tipoEnt = fEntVal==='outra_enteral' ? '' : FORMULAS_ENTERAIS[fEntVal].tipo;
       const volumeInfundido = document.getElementById('tneVolumeInfundido').value;
-      const percInfusao = (volumePrescrito && volumeInfundido) ? Math.round((volumeInfundido/volumePrescrito)*100) : '[completar]';
+      const percInfusao = (volumePrescrito && volumeInfundido) ? (Math.round((volumeInfundido/volumePrescrito)*1000)/10).toFixed(1).replace('.', ',') : '[completar]';
 
       const dadosFormEnt = fEntVal!=='outra_enteral' ? FORMULAS_ENTERAIS[fEntVal] : null;
       const totalTxtEnt = totalFormulaTexto(dadosFormEnt);
@@ -3316,7 +3350,11 @@ function gerarTexto(){
       txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''}.\n`;
       txt += `- HGT: ${hgt || 'sem registro'};\n`;
       { const hd = document.getElementById('hemodialise').value.trim(); if(hd){ txt += `- Hemodiálise: ${hd};\n`; } }
-      txt += `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em progressão.\n\n`;
+      txt += braden === 'sem risco'
+        ? `\nSem risco para lesão por pressão, segundo escala de Braden, dieta em progressão.\n\n`
+        : (braden === 'sem registro'
+            ? `\nEscala de Braden sem registro, dieta em progressão.\n\n`
+            : `\nRisco ${bradenTxt} para lesão, segundo escala de Braden, dieta em progressão.\n\n`);
       txt += `Dietoterapia ajustada aos efeitos colaterais medicamentosos.\n`;
       txt += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional e da EMTN.`;
     }
@@ -3742,6 +3780,7 @@ function resetTudo(){
   document.getElementById('braden').value = 'sem registro';
   document.getElementById('funcaoIntestinal').value = 'nao_avaliado';
   document.getElementById('tempoInternacao').value = '7';
+  document.getElementById('intervaloEvolucao').value = 'auto';
   document.getElementById('passagemTemplate').selectedIndex = 0;
   document.getElementById('tneVia').selectedIndex = 0;
   document.getElementById('tneModoInfusao').selectedIndex = 0;
@@ -3790,7 +3829,7 @@ const CAMPOS_TEXTO_RASCUNHO = ['peso','altura','idade','leito','pesoAnterior','c
   'tneVolumePrescrito','tneTaxaInfusao','tneKcalFormula','tnePtnFormula','tneVetEmtn','tneVolumeInfundido','tneAceitacaoOral','tneFormulaEnteralOutra','tneFormulaParenteralOutra','tneFibraFormula',
   'admVolume','admTaxa','admKcalFormula','admPtnFormula','admFormulaEnteralOutra','admVetEmtn','admFibraFormula',
   'admVolumeParenteral','admTaxaParenteral','admKcalParenteral','admPtnParenteral','admFormulaParenteralOutra'];
-const CAMPOS_SELECT_RASCUNHO = ['andar','dieta','temperatura','tempoInternacao','braden','funcaoIntestinal','passagemTemplate','skPesoIdade','skPesoAltura','skAlturaIdade','skImcIdade','tneVia','tneModoInfusao','tneFormulaEnteral','tneFormulaParenteral','tneDietaOral','admFormulaEnteral','admFormulaParenteral'];
+const CAMPOS_SELECT_RASCUNHO = ['andar','dieta','temperatura','tempoInternacao','intervaloEvolucao','braden','funcaoIntestinal','passagemTemplate','skPesoIdade','skPesoAltura','skAlturaIdade','skImcIdade','tneVia','tneModoInfusao','tneFormulaEnteral','tneFormulaParenteral','tneDietaOral','admFormulaEnteral','admFormulaParenteral'];
 const SEG_GROUPS_RASCUNHO = ['segSexo','segTipoNota','segQPerda','segQIngestao','segQGrave','segNrsEstado','segNrsDoenca',
   'segSkQ1','segSkQ2','segSkQ3','segSkQ4','segTneVO','segTneDesmame'];
 const CHIP_GROUPS_RASCUNHO = ['chipAlergias','chipRestricoes'];
