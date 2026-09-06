@@ -2304,6 +2304,7 @@ const FORMULAS_ENTERAIS = {
   fresubin_hp_energy: {nome:"Fresubin HP Energy", tipo:"polimérica, hipercalórica e hiperproteica", kcalMl:1.5, ptnMl:0.075},
   fresubin_1_2_hp_fibre: {nome:"Fresubin 1.2 HP Fibre", tipo:"polimérica, normocalórica, hiperproteica e com fibras", kcalMl:1.2, ptnMl:0.06, fibraMl:0.02},
   fresubin_2kcal_hp: {nome:"Fresubin 2kcal HP", tipo:"polimérica, hipercalórica (2,0 kcal/ml) e hiperproteica", kcalMl:2.0, ptnMl:0.1},
+  survimed_opd: {nome:"Survimed OPD Easy Bag", tipo:"oligomérica (peptídica), normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.045},
   diben: {nome:"Diben", tipo:"polimérica e normocalórica", kcalMl:1.0, ptnMl:0.0425},
   nutrison: {nome:"Nutrison", tipo:"polimérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.04},
   nutrison_energy: {nome:"Nutrison Energy 1.5", tipo:"polimérica e hipercalórica (1,5 kcal/ml)", kcalMl:1.5, ptnMl:0.06},
@@ -3035,7 +3036,8 @@ function gerarTexto(){
     } else {
       txtNrs += `Planejamento terapêutico: VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg${calc.perfil.base==='ideal'?' peso ideal':''}) e ${calc.ptn} g (${calc.perfil.ptn} g de proteína/kg${calc.perfil.base==='ideal'?' peso ideal':''})\n`;
     }
-    txtNrs += `Próxima avaliação: ${formatDate(calc.proxEvolucao)}`;
+    txtNrs += `Próxima evolução: ${formatDate(calc.proxEvolucao)}\n`;
+    txtNrs += `Próxima reavaliação: ${formatDate(calc.proxReavaliacao)}`;
 
     if(menor){
       const q1 = segVal('segSkQ1')==='sim';
@@ -3188,7 +3190,8 @@ function gerarTexto(){
     } else {
       txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`;
     }
-    txtNrsFinal += `Próxima avaliação: ${formatDate(calc.proxEvolucao)}\n`;
+    txtNrsFinal += `Próxima evolução: ${formatDate(calc.proxEvolucao)}\n`;
+    txtNrsFinal += `Próxima reavaliação: ${formatDate(calc.proxReavaliacao)}\n`;
     txtNrsFinal += `Segue em acompanhamento nutricional.`;
 
     if(menor){ txtNrsFinal += `\n\n` + txtNrs.split('\n').slice(6).join('\n'); }
@@ -3245,7 +3248,8 @@ function gerarTexto(){
         : `Planejamento terapêutico: mantido plano nutricional já estabelecido, sem alterações.\n`;
     }
     txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
-    txt += `Próxima avaliação: ${formatDate(calc.proxEvolucao)}\n`;
+    txt += `Próxima evolução: ${formatDate(calc.proxEvolucao)}\n`;
+    txt += `Próxima reavaliação: ${formatDate(calc.proxReavaliacao)}\n`;
     txt += `Classificado como nível de assistência ${calc.nivel}, mantendo acompanhamento da nutrição${(isEnteral||isParenteral)?' e da EMTN':''}.`;
 
     blocks.push({titulo:null, texto: txt.trim()});
@@ -3349,7 +3353,7 @@ function gerarTexto(){
       /* Redação da folha institucional: tipo de formulação + via + modo + volume/taxa + kcal/proteína.
          O nome comercial entra entre parênteses só quando a fórmula foi escolhida na lista. */
       const marca = (fEntVal!=='outra_enteral' && nomeFormula) ? ` (${nomeFormula})` : (fEntOutra ? ` (${fEntOutra})` : '');
-      const formulacao = tipoEnt ? tipoEnt.split(',')[0].trim() : 'polimérica';
+      const formulacao = tipoEnt ? tipoEnt.split(',')[0].trim().replace(/\s*\([^)]*\)/,'') : 'polimérica';
       txt += `Recebendo dieta enteral ${formulacao}${marca}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína${fibraTxt}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
