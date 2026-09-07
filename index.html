@@ -3036,7 +3036,6 @@ function gerarTexto(){
     } else {
       txtNrs += `Planejamento terapêutico: VET proposto: ${calc.vet} Kcal (${calc.perfil.kcal} kcal/kg${calc.perfil.base==='ideal'?' peso ideal':''}) e ${calc.ptn} g (${calc.perfil.ptn} g de proteína/kg${calc.perfil.base==='ideal'?' peso ideal':''})\n`;
     }
-    txtNrs += `Próxima evolução: ${formatDate(calc.proxEvolucao)}\n`;
     txtNrs += `Próxima reavaliação: ${formatDate(calc.proxReavaliacao)}`;
 
     if(menor){
@@ -3190,7 +3189,6 @@ function gerarTexto(){
     } else {
       txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`;
     }
-    txtNrsFinal += `Próxima evolução: ${formatDate(calc.proxEvolucao)}\n`;
     txtNrsFinal += `Próxima reavaliação: ${formatDate(calc.proxReavaliacao)}\n`;
     txtNrsFinal += `Segue em acompanhamento nutricional.`;
 
@@ -3249,7 +3247,6 @@ function gerarTexto(){
     }
     txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
     txt += `Próxima evolução: ${formatDate(calc.proxEvolucao)}\n`;
-    txt += `Próxima reavaliação: ${formatDate(calc.proxReavaliacao)}\n`;
     txt += `Classificado como nível de assistência ${calc.nivel}, mantendo acompanhamento da nutrição${(isEnteral||isParenteral)?' e da EMTN':''}.`;
 
     blocks.push({titulo:null, texto: txt.trim()});
