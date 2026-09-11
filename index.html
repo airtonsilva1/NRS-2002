@@ -2639,11 +2639,20 @@ function gerarSugestoesSuplemento(){
     if(temDesnut) avisos.push('Diabético desnutrido: manter normocalórico com maior fracionamento; Whey Vitafor sachê pode enriquecer preparações sem carga glicídica.');
   }
   else if(temDisf){
+    /* Os específicos de consistência controlada vêm primeiro, mas o paciente em dieta
+       pastosa ou semilíquida também aceita suplemento em pó ou líquido incorporado a
+       veículos da própria dieta (vitamina, mingau, gelatina, creme de frutas). */
     opcoes = [ SUPLEMENTOS_CATALOG.fresubin_creme ];
     if(ehIdoso) opcoes.push(SUPLEMENTOS_CATALOG.nutren_senior);
-    titulo = 'Suplementação — Disfagia (consistência controlada)';
+    opcoes.push(SUPLEMENTOS_CATALOG.whey_vitafor);
+    opcoes.push(SUPLEMENTOS_CATALOG.nutridrink_po_max);
+    opcoes.push(SUPLEMENTOS_CATALOG.nutridrink_compact_protein);
+    titulo = 'Suplementação — Consistência pastosa/semilíquida';
     avisos.push('Fresubin Creme disponível em 2 sabores: Praline e Frutas da Floresta.');
-    avisos.push('Alternativa: suplemento líquido + espessante Resource Thicken Up Clear (cód. 9881) na consistência prescrita pela fonoaudiologia.');
+    avisos.push('Suplemento em pó (Whey Vitafor, Nutridrink Pó Max) pode ser incorporado a vitamina, mingau, purê ou creme de frutas, mantendo a consistência prescrita.');
+    avisos.push('Suplemento líquido (Nutridrink Compact Protein) pode ser espessado com Resource Thicken Up Clear (cód. 9881) ou ofertado batido com fruta, na consistência prescrita pela fonoaudiologia.');
+    avisos.push('GELATINA: só usar com suplemento em pó SEM proteína hidrolisada ou enzimas — proteína e abacaxi/kiwi/mamão impedem a gelatina de firmar. Preferir gelatina pronta industrializada e conferir com a fonoaudiologia.');
+    avisos.push('A consistência final de qualquer veículo (vitamina, mingau, gelatina) deve ser conferida com a fonoaudiologia antes da liberação.');
   }
   else if(temFer){
     opcoes = [ SUPLEMENTOS_CATALOG.cubitan, SUPLEMENTOS_CATALOG.impact, SUPLEMENTOS_CATALOG.gan, SUPLEMENTOS_CATALOG.fresubin_lp ];
@@ -2692,7 +2701,7 @@ function gerarSugestoesSuplemento(){
     avisos.push('Dieta sem sacarose: Impact, Nutri Renal e as fórmulas para diabetes (Diasip, Glucerna, Nutren Control) são isentas de sacarose; conferir rótulo das demais.');
   }
   
-  opcoes = opcoes.filter(Boolean).slice(0,4);
+  opcoes = opcoes.filter(Boolean).slice(0, temDisf ? 5 : 4);
   if(opcoes.length === 0) return null;
   
   const LS = { contem: ['Contém','var(--danger-soft)','var(--danger)'], isento: ['Isento','var(--accent-soft)','var(--ok)'], tracos: ['Traços','var(--warn-bg)','#8a6d1a'], verificar: ['Verificar','var(--card-2)','var(--muted)'] };
@@ -3095,7 +3104,7 @@ function gerarTexto(){
 
     let txtEvolucao = `#Pela Nutrição às ${hora}\n`;
     if(isJejum){
-      txtEvolucao += `Em admissão do paciente${leito?` internado no leito ${leito}`:''}, realizo ${menor?'StrongKids':'NRS-2002'};\n`;
+      txtEvolucao += `Em admissão do paciente, realizo ${menor?'StrongKids':'NRS-2002'};\n`;
     } else {
       txtEvolucao += `Em visita de admissão realizo ${menor?'StrongKids':'NRS-2002'}.\n`;
     }
@@ -3136,7 +3145,7 @@ function gerarTexto(){
 
     if(isJejum){
       tituloMulti = 'Plano educacional (multidisciplinar) — jejum';
-      txtMulti += `Oriento paciente e acompanhante quanto jejum a critério médico para procedimento cirúrgico. Oriento quanto marcação da primeira refeição ser realizada exclusivamente com a nutricionista e que a mesma orientará quanto características da dieta prescrita pela equipe médica.\n`;
+      txtMulti += `Oriento paciente e acompanhante quanto jejum a critério médico. Oriento quanto marcação da primeira refeição ser realizada exclusivamente com a nutricionista e que a mesma orientará quanto características da dieta prescrita pela equipe médica.\n`;
       txtMulti += `Planejamento terapêutico: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n\n`;
       txtMulti += `Oriento paciente quanto à alimentação via oral, que deverá ser ofertada apenas com alimentos servidos exclusivamente do setor da nutrição, ${pronomeAdm} compreende as informações prestadas. Oriento quanto ao nosso QR code para marcação do cardápio digital de paciente e acompanhante e oriento quanto nossos horários de entrega das refeições.\n\n`;
       txtMulti += `Oriento paciente e acompanhante sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
@@ -3210,10 +3219,10 @@ function gerarTexto(){
     let txt = `#Pela Nutrição às ${hora}\n`;
 
     if(isJejum){
-      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue em jejum/dieta zero no momento, sem aceitação alimentar a ser avaliada.\n`;
+      txt += `Realizo revisita ao paciente, segue em jejum/dieta zero no momento, sem aceitação alimentar a ser avaliada.\n`;
       txt += `Planejamento terapêutico: mantido jejum até o momento, aguardando liberação de dieta conforme prescrição médica.\n`;
     } else if(isEnteral || isParenteral){
-      txt += `Realizo revisita ao paciente${leito?` (leito ${leito})`:''}, segue recebendo dieta ${isEnteral?'enteral':'parenteral'} conforme prescrição médica.\n`;
+      txt += `Realizo revisita ao paciente, segue recebendo dieta ${isEnteral?'enteral':'parenteral'} conforme prescrição médica.\n`;
       txt += calc.vet!==null
         ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`
         : `Planejamento terapêutico: mantido VET/proteína já estabelecido pela EMTN.\n`;
