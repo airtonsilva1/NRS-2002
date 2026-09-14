@@ -76,6 +76,56 @@
   }
 
   *{box-sizing:border-box;}
+
+  /* Foco visível: quem digita o dia inteiro precisa enxergar onde está */
+  input:focus-visible, select:focus-visible, textarea:focus-visible,
+  button:focus-visible, [contenteditable]:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  .chip input:focus-visible + *, .chip:focus-within{
+    outline:2px solid var(--accent); outline-offset:1px; border-radius:var(--radius-xs);
+  }
+
+  /* Barra de conferência: acompanha a rolagem para não obrigar a voltar ao topo */
+  /* Só a faixa de números acompanha a rolagem — o cabeçalho sai de cena
+     para não comer altura de tela. Fundo opaco para nada passar por baixo. */
+  #barraResumo{
+    position:sticky; top:0; z-index:40;
+    display:flex; gap:0; flex-wrap:wrap;
+    background:var(--card);
+    border:1px solid var(--border); border-radius:var(--radius-xs);
+    padding:8px 10px; margin:0 0 16px;
+    box-shadow:0 4px 12px -6px rgba(16,32,48,.3);
+  }
+  .br-item{
+    flex:1 1 90px; min-width:90px; padding:2px 12px;
+    border-left:1px solid var(--border);
+  }
+  .br-item:first-child{border-left:none; padding-left:0;}
+  .br-rot{
+    display:block; font-size:10px; color:var(--faint);
+    font-weight:700; letter-spacing:.3px; margin-bottom:1px;
+  }
+  .br-val{
+    display:block; font-size:16px; font-weight:700; color:var(--text);
+    line-height:1.15; font-variant-numeric:tabular-nums;
+  }
+  .br-val.alerta{color:var(--danger);}
+  @media (max-width:640px){
+    .br-item{flex:1 1 33%; min-width:0; padding:2px 8px;}
+    .br-val{font-size:14px;}
+    #barraResumo{margin-top:8px; padding-top:8px;}
+  }
+  @media print{ header{position:static;} #barraResumo{display:none;} }
+
+  /* Algarismos de largura fixa em tudo que é número clínico —
+     peso, IMC, VET, glicemia. Colunas alinham e a conferência fica mais rápida. */
+  input[type="number"], input[inputmode="decimal"], input[inputmode="numeric"],
+  .calc-row span, .output-block, .mono, table td, table th{
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
   html,body{margin:0;padding:0;}
   html{scroll-behavior:smooth;}
   body{
@@ -513,13 +563,12 @@
         <h1>Gerador de Evolução Nutricional</h1>
         <small>Apoio ao registro em prontuário</small>
         <small style="display:block; margin-top:2px; color:var(--faint); font-size:11.5px;">Desenvolvido por Airton Brendon — Nutricionista, CRN4 22102218</small>
-      </div>
-    </div>
+        <small style="display:block; margin-top:1px; color:var(--faint); font-size:11px; font-family:var(--font-mono);">versão 5.0 — setembro/2026</small>
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
       <button id="temaBtn" type="button" class="mini-btn" title="Alternar modo escuro">🌓 Tema</button>
       <button id="fonteBtn" type="button" class="mini-btn" title="Aumentar fonte (modo celular)">🔤 Fonte</button>
       <button id="imprimirBtn" type="button" class="mini-btn" title="Imprimir ou salvar como PDF">🖨️ Imprimir/PDF</button>
-      <button id="catalogoSupBtn" type="button" class="mini-btn" title="Ver catálogo de suplementos da casa">📋 Catálogo de Suplementos</button>
+      <button id="catalogoSupBtn" type="button" class="mini-btn" title="Ver catálogo de suplementos da casa">Catálogo de suplementos</button>
       <button id="desfazerLimparBtn" type="button" class="mini-btn" style="display:none;background:#fff3cd;border-color:#e0c26a;">↩ Desfazer limpeza</button>
       <button id="limparBtn" type="button" style="background:#fff;border:1px solid #c33;color:#c33;font-size:12.5px;font-weight:bold;padding:8px 14px;border-radius:3px;cursor:pointer;">Limpar dados</button>
       <div class="clock">
@@ -527,7 +576,16 @@
         <b id="liveClock">--:--</b>
       </div>
     </div>
+
   </header>
+    <!-- Números que você mais confere, sempre visíveis enquanto rola o formulário -->
+    <div id="barraResumo" aria-live="polite">
+      <div class="br-item"><span class="br-rot">IMC</span><span class="br-val" id="brImc">—</span></div>
+      <div class="br-item"><span class="br-rot">VET</span><span class="br-val" id="brVet">—</span></div>
+      <div class="br-item"><span class="br-rot">Proteína</span><span class="br-val" id="brPtn">—</span></div>
+      <div class="br-item"><span class="br-rot">Nível</span><span class="br-val" id="brNivel">—</span></div>
+      <div class="br-item"><span class="br-rot">Triagem</span><span class="br-val" id="brScore">—</span></div>
+    </div>
 
   <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11.5px;color:#888;margin:-10px 0 14px;">
     <span id="contadorHoje">Notas geradas hoje: 0</span>
@@ -537,7 +595,7 @@
   <div class="grid">
 
     <!-- ===================== FORM ===================== -->
-    <div class="panel">
+    <div class="panel" id="formCol">
       <h2>Dados do paciente</h2>
 
       <!-- Seções Anamnese e Pacientes salvos removidas a pedido do usuário.
@@ -598,7 +656,7 @@
 
       <div id="secaoTriagemAdmissao">
       <details open>
-      <summary style="cursor:pointer;font-size:12.5px;text-transform:uppercase;letter-spacing:0.4px;color:#666;font-weight:bold;padding-bottom:6px;">📋 Avaliação de risco nutricional (NRS-2002 / StrongKids)</summary>
+      <summary style="cursor:pointer;font-size:13.5px;color:var(--accent-dark);font-weight:700;letter-spacing:-.1px;padding-bottom:6px;">Avaliação de risco nutricional — NRS-2002 / StrongKids</summary>
       <div class="nrs-box" id="nrsBoxAdulto">
         <div class="nrs-title">AVALIAÇÃO DE RISCO NUTRICIONAL (NRS, 2002)</div>
         <div class="nrs-sub">Nutritional Risk Screening, 2002</div>
@@ -764,7 +822,7 @@
       </select>
       <div class="hint" id="presetMedicoHint"></div>
 
-      <div class="hint" style="margin-top:6px;color:#8a5a1f;">⚠️ A conduta por médico é uma <b>sugestão de ponto de partida</b> — a dieta pode evoluir, e a prescrição final é sempre do médico. Confira sempre no MV antes de fechar a nota.</div>
+      <div class="hint" style="margin-top:6px;color:#8a5a1f;">A conduta por médico é uma <b>sugestão de ponto de partida</b> — a dieta pode evoluir, e a prescrição final é sempre do médico. Confira sempre no MV antes de fechar a nota.</div>
 
       <label>Dieta prescrita</label>
       <select id="dieta">
@@ -870,7 +928,8 @@
       </div>
 
       <div id="secaoRestricoesAdmissao">
-      <label class="first">🍽️ Restrições associadas (marque quantas precisar)</label>
+      <label class="first">Restrições associadas</label>
+      <div class="hint" style="margin:-2px 0 8px;">Marque quantas precisar.</div>
       <input type="text" id="filtroRestricoes" placeholder="Filtrar lista... (ex: renal, glúten)" style="margin-bottom:8px;">
       <div class="chipgroup" id="chipRestricoes">
         <label class="chip"><input type="checkbox" value="hipoglicidica"> Diabetes</label>
@@ -903,7 +962,7 @@
       <div class="divider"></div>
 
       <div id="secaoAlergiasAdmissao">
-      <label class="first">🥜 Alergias específicas</label>
+      <label class="first">Alergias específicas</label>
       <div class="chipgroup" id="chipAlergias">
         <label class="chip"><input type="checkbox" value="Glúten"> Glúten</label>
         <label class="chip"><input type="checkbox" value="Lactose"> Lactose</label>
@@ -1159,9 +1218,9 @@
       <div id="catalogoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(16,32,48,0.45); z-index:9999; overflow:auto; backdrop-filter:blur(2px);">
         <div style="background:var(--card); color:var(--text); margin:24px auto; padding:22px; border-radius:var(--radius); max-width:1250px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-pop); border:1px solid var(--border); font-family:var(--font-body);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:2px solid var(--accent); padding-bottom:12px;">
-            <h2 style="margin:0; color:var(--accent-dark); font-size:18px;">📋 Catálogo de Suplementos Orais — Copa Star</h2>
+            <h2 style="margin:0; color:var(--accent-dark); font-size:18px;">Catálogo de suplementos orais — Copa Star</h2>
             <div style="display:flex; gap:8px; align-items:center;">
-              <button id="imprimirCatalogo" style="background:var(--accent); color:#fff; border:none; border-radius:var(--radius-xs); font-size:12.5px; font-weight:700; cursor:pointer; padding:8px 14px; font-family:var(--font-body);">🖨️ Imprimir catálogo</button>
+              <button id="imprimirCatalogo" style="background:var(--accent); color:#fff; border:none; border-radius:var(--radius-xs); font-size:12.5px; font-weight:700; cursor:pointer; padding:8px 14px; font-family:var(--font-body);">Imprimir catálogo</button>
               <button id="fecharCatalogo" style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); font-size:18px; cursor:pointer; width:32px; height:32px; color:var(--muted);">✕</button>
             </div>
           </div>
@@ -1194,7 +1253,7 @@
       <div class="divider"></div>
 
       <details id="detalhesExport">
-      <summary style="cursor:pointer;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:#666;font-weight:bold;padding-bottom:6px;">Dados para o sistema hospitalar</summary>
+      <summary style="cursor:pointer;font-size:13.5px;color:var(--accent-dark);font-weight:700;letter-spacing:-.1px;padding-bottom:6px;">Dados para o sistema hospitalar</summary>
       <div class="hint" style="margin:10px 0;">Preencha o que for relevante — o resto do texto (Diagnóstico, HDA, HPP etc.) é clínico e só você sabe.</div>
 
       <label class="first">Preferências</label>
@@ -2141,6 +2200,22 @@ function recalc(){
     <div class="calc-row"><span>Próx. Evolução (+${dias}d, nível ${label})</span><span style="font-size:14px">${formatDate(proxEvolucao)}</span></div>
     <div class="calc-row"><span>Próx. Reavaliação ${menor?'StrongKids':'NRS'} (+${diasReaval}d)</span><span style="font-size:14px">${formatDate(proxReavaliacao)}</span></div>
   `;
+  /* Espelha na barra fixa os números que já foram calculados acima */
+  const pintarBarra = (id, valor, alerta) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = valor;
+    el.classList.toggle('alerta', !!alerta);
+  };
+  pintarBarra('brImc', imc ? imc.toFixed(2).replace('.', ',') : '—', imcSuspeito);
+  pintarBarra('brVet', vet ? vet + ' kcal' : '—');
+  pintarBarra('brPtn', ptn ? String(ptn).replace('.', ',') + ' g' : '—');
+  pintarBarra('brNivel', label || '—');
+  pintarBarra('brScore', menor
+      ? 'SK ' + strongKidsScore()
+      : 'NRS ' + nrsTotal(),
+    !menor && nrsTotal() >= 3);
+
   const tneKcalEl = document.getElementById('tneKcalFormula');
   const tneOverEl = document.getElementById('tneOverfeedingHint');
   if(tneKcalEl && tneOverEl){
@@ -2304,7 +2379,7 @@ const FORMULAS_ENTERAIS = {
   fresubin_hp_energy: {nome:"Fresubin HP Energy", tipo:"polimérica, hipercalórica e hiperproteica", kcalMl:1.5, ptnMl:0.075},
   fresubin_1_2_hp_fibre: {nome:"Fresubin 1.2 HP Fibre", tipo:"polimérica, normocalórica, hiperproteica e com fibras", kcalMl:1.2, ptnMl:0.06, fibraMl:0.02},
   fresubin_2kcal_hp: {nome:"Fresubin 2kcal HP", tipo:"polimérica, hipercalórica (2,0 kcal/ml) e hiperproteica", kcalMl:2.0, ptnMl:0.1},
-  survimed_opd: {nome:"Survimed OPD Easy Bag", tipo:"oligomérica (peptídica), normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.045},
+  survimed_opd: {nome:"Survimed OPD Easy Bag", tipo:"oligomérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.045},
   diben: {nome:"Diben", tipo:"polimérica e normocalórica", kcalMl:1.0, ptnMl:0.0425},
   nutrison: {nome:"Nutrison", tipo:"polimérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.04},
   nutrison_energy: {nome:"Nutrison Energy 1.5", tipo:"polimérica e hipercalórica (1,5 kcal/ml)", kcalMl:1.5, ptnMl:0.06},
@@ -2511,23 +2586,23 @@ const SIGLAS_ORDENADAS = Object.keys(ACRONIMOS_MEDICOS).sort((a,b)=>b.length-a.l
 const SUPLEMENTOS_CATALOG = {
   /* SOMENTE SUPLEMENTOS ORAIS — dietas enterais NÃO entram aqui.
      Lactose confirmada nos sites dos fabricantes (ago/2026); 'verificar' = conferir rótulo do lote. */
-  'cubitan': { nome: 'Cubitan Baunilha', codigo: '414219', tipo: 'bebida', ml: 200, proteina: 10.2, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 1, praline: 0, lactose: 'contem', para: 'Cicatrização (Arg+Zn)' },
-  'diasip': { nome: 'Diasip Baunilha', codigo: '544605', tipo: 'bebida', ml: 200, proteina: 9, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Diabetes (IG baixo)' },
-  'fresubin_creme': { nome: 'Fresubin Creme (Praline ou Frutas da Floresta)', codigo: '1015141', tipo: 'creme', ml: 125, proteina: 12.5, kcal: 187, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 1, lactose: 'contem', para: 'Disfagia (colher; 2 sabores)' },
-  'fresubin_32': { nome: 'Fresubin 3.2kcal Baunilha', codigo: '1021649', tipo: 'bebida', ml: 125, proteina: 10, kcal: 400, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Desnutrição severa (máx. kcal/volume)' },
-  'fresubin_lp': { nome: 'Fresubin LP', codigo: '[CONFIRMAR]', tipo: 'bebida', ml: 200, proteina: 20, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'verificar', para: 'Hiperproteico normocalórico (proteína alta sem excesso de calorias)' },
-  'fresubin_jucy': { nome: 'Fresubin Jucy Drink Maçã', codigo: '15035', tipo: 'bebida', ml: 200, proteina: 8, kcal: 300, HP: 0, HC: 1, NP: 1, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Sem lactose e sem gordura (clarificado)' },
-  'gan': { nome: 'GAN Cicatrização Sachê', codigo: '1021918', tipo: 'po', ml: 35, proteina: 9, kcal: 150, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 1, praline: 0, lactose: 'verificar', para: 'Cicatrização concentrada' },
-  'glucerna': { nome: 'Glucerna SR Baunilha', codigo: '1025776', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes (IG baixo)' },
-  'impact': { nome: 'Impact Baunilha', codigo: '1030796', tipo: 'bebida', ml: 200, proteina: 13, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 0, praline: 0, lactose: 'isento', para: 'Cicatrização / imunonutrição perioperatória' },
-  'novasource_ren': { nome: 'Novasource REN Baunilha', codigo: '1032597', tipo: 'bebida', ml: 200, proteina: 9.1, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'IRC' },
-  'nutren_control': { nome: 'Nutren Control Baunilha', codigo: '1036755', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes (IG baixo, sem lactose)' },
-  'nutren_senior': { nome: 'Nutren Senior Pronto para Beber', codigo: 'XX', tipo: 'bebida', ml: 200, proteina: 14, kcal: 250, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Idosos: sarcopenia (Ca + Vit D + proteína)' },
-  'nutri_renal': { nome: 'Nutri Renal Baunilha', codigo: '1027930', tipo: 'bebida', ml: 200, proteina: 8.3, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'IRC (sem lactose)' },
-  'nutridrink_compact': { nome: 'Nutridrink Compact (Capuccino/Chocolate/Morango)', codigo: '725/16102/16107', tipo: 'bebida', ml: 125, proteina: 12, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Alto risco, volume reduzido' },
-  'nutridrink_compact_protein': { nome: 'Nutridrink Compact Protein', codigo: '21816', tipo: 'bebida', ml: 125, proteina: 18, kcal: 306, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Alto risco (máx. proteína/volume)' },
-  'nutridrink_po_max': { nome: 'Nutridrink Pó Max (Protein)', codigo: 'XX', tipo: 'po', ml: 0, proteina: 15, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Alto risco (pó, versátil, sem lactose)' },
-  'whey_vitafor': { nome: 'Whey Protein Isolado Vitafor Sachê', codigo: 'XX', tipo: 'po', ml: 15, proteina: 14, kcal: 60, HP: 1, HC: 0, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'tracos', para: 'Módulo proteico (enriquecer dieta/preparações)' }
+  'cubitan': { nome: 'Cubitan Baunilha', codigo: '414219', tipo: 'bebida', ml: 200, proteina: 10.2, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 1, praline: 0, lactose: 'contem', para: 'Lesão por pressão, ferida ou pós-operatório (arginina e zinco)' },
+  'diasip': { nome: 'Diasip Baunilha', codigo: '544605', tipo: 'bebida', ml: 200, proteina: 9, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Diabetes ou hiperglicemia (índice glicêmico baixo)' },
+  'fresubin_creme': { nome: 'Fresubin Creme (Praline ou Frutas da Floresta)', codigo: '1015141', tipo: 'creme', ml: 125, proteina: 12.5, kcal: 187, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 1, lactose: 'contem', para: 'Disfagia — consistência de colher (2 sabores)' },
+  'fresubin_32': { nome: 'Fresubin 3.2kcal Baunilha', codigo: '1021649', tipo: 'bebida', ml: 125, proteina: 10, kcal: 400, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Desnutrição grave ou restrição de volume (máximo de calorias em pouco volume)' },
+  'fresubin_lp': { nome: 'Fresubin LP', codigo: '[CONFIRMAR]', tipo: 'bebida', ml: 200, proteina: 6, kcal: 400, HP: 0, HC: 1, NP: 0, NC: 0, hipoPTN: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'verificar', para: 'Doença renal crônica NÃO dialítica (hipercalórico e hipoproteico, baixo sódio/potássio/fósforo)' },
+  'fresubin_jucy': { nome: 'Fresubin Jucy Drink Maçã', codigo: '15035', tipo: 'bebida', ml: 200, proteina: 8, kcal: 300, HP: 0, HC: 1, NP: 1, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Intolerância à lactose, má absorção de gordura ou dieta clarificada' },
+  'gan': { nome: 'GAN Cicatrização Sachê', codigo: '1021918', tipo: 'po', ml: 35, proteina: 9, kcal: 150, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 1, praline: 0, lactose: 'verificar', para: 'Lesão por pressão ou ferida extensa (dose concentrada de arginina)' },
+  'glucerna': { nome: 'Glucerna SR Baunilha', codigo: '1025776', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes ou hiperglicemia (índice glicêmico baixo)' },
+  'impact': { nome: 'Impact Baunilha', codigo: '1030796', tipo: 'bebida', ml: 200, proteina: 13, kcal: 200, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 1, zinco: 0, praline: 0, lactose: 'isento', para: 'Pré e pós-operatório de grande porte (imunonutrição)' },
+  'novasource_ren': { nome: 'Novasource REN Baunilha', codigo: '1032597', tipo: 'bebida', ml: 200, proteina: 9.1, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Doença renal crônica em hemodiálise' },
+  'nutren_control': { nome: 'Nutren Control Baunilha', codigo: '1036755', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes ou hiperglicemia, com intolerância à lactose' },
+  'nutren_senior': { nome: 'Nutren Senior Pronto para Beber', codigo: 'XX', tipo: 'bebida', ml: 200, proteina: 14, kcal: 250, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Idoso com sarcopenia ou baixo peso (cálcio, vitamina D e proteína)' },
+  'nutri_renal': { nome: 'Nutri Renal Baunilha', codigo: '1027930', tipo: 'bebida', ml: 200, proteina: 8.3, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Doença renal crônica em hemodiálise, com intolerância à lactose' },
+  'nutridrink_compact': { nome: 'Nutridrink Compact (Capuccino/Chocolate/Morango)', codigo: '725/16102/16107', tipo: 'bebida', ml: 125, proteina: 12, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Risco nutricional ou baixo peso, com pouca aceitação de volume' },
+  'nutridrink_compact_protein': { nome: 'Nutridrink Compact Protein', codigo: '21816', tipo: 'bebida', ml: 125, proteina: 18, kcal: 306, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Risco nutricional ou baixo peso, com necessidade proteica alta' },
+  'nutridrink_po_max': { nome: 'Nutridrink Pó Max (Protein)', codigo: 'XX', tipo: 'po', ml: 0, proteina: 15, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Risco nutricional ou baixo peso — pó para acrescentar a preparações, sem lactose' },
+  'whey_vitafor': { nome: 'Whey Protein Isolado Vitafor Sachê', codigo: 'XX', tipo: 'po', ml: 15, proteina: 14, kcal: 60, HP: 1, HC: 0, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'tracos', para: 'Necessidade proteica alta — pó para enriquecer refeições e preparações' }
 };
 
 /* ═══ SELEÇÃO DE SUPLEMENTO (checkbox nos cards) ═══
@@ -2547,6 +2622,24 @@ function caracteristicasSuplemento(s){
 
 /* Frase pronta para colar após a dieta, no padrão da instituição:
    "Dieta VO associada a suplementação hiperproteica, 1x ao dia, Nutridrink Compact Protein (...)" */
+/* Confere se um suplemento escolhido à mão conflita com as condições marcadas.
+   Não impede a escolha — a conduta é do nutricionista —, apenas alerta na tela. */
+function conflitosDoSuplemento(chave){
+  const s = SUPLEMENTOS_CATALOG[chave];
+  if(!s) return [];
+  const r = restricoesSelecionadas();
+  const out = [];
+  if(r.includes('hipoglicidica') && s.HC)
+    out.push('Paciente com dieta hipoglicídica e este suplemento é HIPERCALÓRICO — risco de descompensar a glicemia.');
+  if(r.includes('irc_hd') && s.hipoPTN)
+    out.push('Paciente em hemodiálise e este suplemento é HIPOPROTEICO — a necessidade proteica na diálise é alta.');
+  if(r.includes('irc') && !r.includes('irc_hd') && s.HP)
+    out.push('Renal em tratamento conservador e este suplemento é HIPERPROTEICO — pode sobrecarregar a função renal.');
+  if(s.lactose === 'contem' && (alergiasSelecionadas().some(a=>/lactose/i.test(a)) || r.includes('sem_lactose')))
+    out.push('Restrição de lactose marcada e este suplemento CONTÉM lactose.');
+  return out;
+}
+
 function fraseSuplementoSelecionado(prefixo){
   const chaves = Object.keys(SUPLEMENTOS_MARCADOS);
   if(chaves.length === 0) return '';
@@ -2623,8 +2716,15 @@ function gerarSugestoesSuplemento(){
   /* Ordem de decisão: RENAL → DIABETES → DISFAGIA → FERIDA → DESNUTRIÇÃO → RISCO GERAL */
   
   if(ehRenal){
-    opcoes = [ SUPLEMENTOS_CATALOG.nutri_renal, SUPLEMENTOS_CATALOG.novasource_ren ];
-    titulo = 'Suplementação — Insuficiência Renal (proteína e eletrólitos controlados)';
+    const emHD = restricoes.includes('irc_hd');
+    opcoes = emHD
+      ? [ SUPLEMENTOS_CATALOG.novasource_ren, SUPLEMENTOS_CATALOG.nutri_renal ]
+      : [ SUPLEMENTOS_CATALOG.fresubin_lp, SUPLEMENTOS_CATALOG.nutri_renal, SUPLEMENTOS_CATALOG.novasource_ren ];
+    titulo = emHD
+      ? 'Suplementação — Renal em hemodiálise (proteína elevada, eletrólitos controlados)'
+      : 'Suplementação — Renal conservador (proteína e eletrólitos controlados)';
+    if(emHD) avisos.push('Paciente em hemodiálise: a necessidade proteica é ALTA (1,2 g/kg ou mais). Não usar fórmula hipoproteica como o Fresubin LP.');
+    else avisos.push('Tratamento conservador: proteína controlada. Fresubin LP é hipercalórico (400 kcal/200 ml) e hipoproteico (6 g), com baixo teor de sódio, potássio e fósforo.');
     if(temFer) avisos.push('Renal com ferida: discutir com EMTN antes de associar fórmula de cicatrização (carga proteica).');
     if(temDisf) avisos.push('Renal com disfagia: associar espessante Resource Thicken Up Clear (cód. 9881) à fórmula renal, na consistência prescrita pela fonoaudiologia.');
   }
@@ -2656,7 +2756,7 @@ function gerarSugestoesSuplemento(){
     avisos.push('A consistência final de qualquer veículo (vitamina, mingau, gelatina) deve ser conferida com a fonoaudiologia antes da liberação.');
   }
   else if(temFer){
-    opcoes = [ SUPLEMENTOS_CATALOG.cubitan, SUPLEMENTOS_CATALOG.impact, SUPLEMENTOS_CATALOG.gan, SUPLEMENTOS_CATALOG.fresubin_lp ];
+    opcoes = [ SUPLEMENTOS_CATALOG.cubitan, SUPLEMENTOS_CATALOG.impact, SUPLEMENTOS_CATALOG.gan ];
     titulo = 'Suplementação — Cicatrização (arginina + zinco)';
     if(temDesnut){
       opcoes.push(SUPLEMENTOS_CATALOG.whey_vitafor);
@@ -2708,7 +2808,7 @@ function gerarSugestoesSuplemento(){
   const LS = { contem: ['Contém','var(--danger-soft)','var(--danger)'], isento: ['Isento','var(--accent-soft)','var(--ok)'], tracos: ['Traços','var(--warn-bg)','#8a6d1a'], verificar: ['Verificar','var(--card-2)','var(--muted)'] };
   
   let html = `<div class="sup-box" style="margin-top:18px; background:var(--card); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius-sm); padding:16px; font-family:var(--font-body);">`;
-  html += `<div style="font-weight:700; color:var(--accent-dark); font-size:14.5px; margin-bottom:2px;">💊 ${titulo}</div>`;
+  html += `<div style="font-weight:700; color:var(--accent-dark); font-size:14.5px; margin-bottom:2px;">${titulo}</div>`;
   html += `<div style="font-size:11.5px; color:var(--faint); margin-bottom:12px;">Opções em ordem de preferência (1º = primeira escolha) • uso oral exclusivo — dietas enterais não são listadas aqui</div>`;
   html += `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px;">`;
   
@@ -2766,6 +2866,7 @@ function gerarSugestoesSuplemento(){
     <option value="1x">1x ao dia</option><option value="2x">2x ao dia</option><option value="3x">3x ao dia</option></select>`;
   html += `</div>`;
   html += `<div style="font-size:11px; color:var(--faint); margin-top:5px;">Ao escolher, a frase entra no texto da nota do mesmo jeito que as caixas acima.</div>`;
+  html += `<div id="supExtraAlerta"></div>`;
   html += `</div>`;
 
   if(avisos.length > 0){
@@ -2775,7 +2876,7 @@ function gerarSugestoesSuplemento(){
   }
   
   html += `<div style="margin-top:14px; border-top:1px dashed var(--border); padding-top:12px;">`;
-  html += `<div style="font-weight:700; color:var(--ok); font-size:13px; margin-bottom:8px;">📋 Cronograma de acompanhamento</div>`;
+  html += `<div style="font-weight:700; color:var(--ok); font-size:13px; margin-bottom:8px;">Cronograma de acompanhamento</div>`;
   const sem = (n, t, itens) => `<div style="display:flex; align-items:flex-start; margin-bottom:9px;"><span style="background:var(--ok); color:#fff; border-radius:50%; min-width:19px; height:19px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px; margin-right:9px; margin-top:1px;">${n}</span><div style="font-size:12px; color:var(--muted); line-height:1.5;"><b style="color:var(--text);">${t}</b><br/>${itens}</div></div>`;
   html += sem(0, 'Semana 0 — Início', 'Confirmar NRS-2002 e necessidades • iniciar dose recomendada • orientar oferta (temperatura, fracionamento)');
   html += sem(1, 'Semana 1 — Tolerância', 'Avaliar tolerância GI • registrar adesão (% consumido) • ajustar volume/frequência');
@@ -3143,7 +3244,7 @@ function gerarTexto(){
     if(isJejum){
       txtEvolucao += `Planejamento terapêutico: O paciente segue sem dieta prescrita até o momento.\n`;
       txtEvolucao += `Planejamento terapêutico: VET proposto diário de ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e proteínas: ${calc.ptn} g (${calc.perfil.ptn} g/kg).\n`;
-      txtEvolucao += `Oriento quanto jejum para procedimento cirúrgico.\n`;
+      txtEvolucao += `Oriento jejum conforme prescrição médica.\n`;
       txtEvolucao += `Dietoterapia será ajustada aos efeitos colaterais e interações medicamentosas quando dieta for liberada.\n`;
       txtEvolucao += `Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     } else if(isEnteral || isParenteral){
@@ -3206,7 +3307,7 @@ function gerarTexto(){
     const classifLimpa = calc.classificacao.replace(/\s*\([^)]*\)\s*/g,'').trim().toLowerCase();
     txtNrsFinal += `Classificado como nível de assistência ${calc.nivel} e ${classifLimpa} segundo ${refIMC};\n`;
     if(isJejum){
-      txtNrsFinal += `Segue em jejum conforme solicitação médica para procedimento cirúrgico;\n`;
+      txtNrsFinal += `Segue em jejum conforme solicitação médica.\n`;
     } else if(isEnteral || isParenteral){
       txtNrsFinal += `Recebendo dieta ${isEnteral?'enteral':'parenteral'}: ${isEnteral?descreverFormulaEnteralAdm():descreverFormulaParenteralAdm()};\n`;
     } else {
@@ -3537,6 +3638,20 @@ function renderOutputBlocks(blocks){
       if(SUP_EXTRA) SUPLEMENTOS_MARCADOS[SUP_EXTRA] = supExtraFreq ? supExtraFreq.value : '1x';
       gerarTexto();
     };
+    /* Alerta de conflito clínico: não bloqueia, mas deixa visível */
+    const pintarAlerta = ()=>{
+      const alvo = document.getElementById('supExtraAlerta');
+      if(!alvo) return;
+      const probs = supExtra.value ? conflitosDoSuplemento(supExtra.value) : [];
+      alvo.innerHTML = probs.length
+        ? `<div style="background:var(--danger-soft); border:1px solid var(--danger); border-radius:var(--radius-xs); padding:8px 10px; margin-top:8px; font-size:12px; color:var(--danger); line-height:1.5;">
+             <b>Atenção:</b><br/>${probs.map(p=>'• '+p).join('<br/>')}
+             <div style="color:var(--muted); margin-top:5px; font-size:11px;">A escolha continua valendo — confira se é essa mesmo a sua conduta.</div>
+           </div>`
+        : '';
+    };
+    supExtra.addEventListener('change', pintarAlerta);
+    pintarAlerta();
     supExtra.addEventListener('change', aplicarExtra);
     if(supExtraFreq) supExtraFreq.addEventListener('change', ()=>{ if(supExtra.value) aplicarExtra(); });
   }
@@ -3652,7 +3767,7 @@ document.getElementById('imprimirCatalogo').addEventListener('click', ()=>{
     td{ border:1px solid #999; padding:4px 5px; }
     .rodape{ font-size:9px; color:#888; margin-top:8px; }
   </style></head><body>
-  <h1>📋 Catálogo de Suplementos Orais — Copa Star</h1>
+  <h1>Catálogo de suplementos orais — Copa Star</h1>
   <div class="sub">Somente suplementos de uso oral — dietas enterais não listadas. Coluna Lactose orienta dietas sem resíduos e isentas de lactose (conferir sempre o rótulo do lote). Impresso em ${hoje}.</div>
   <table>
     <thead><tr>
@@ -3692,6 +3807,40 @@ document.getElementById('catalogoModal').addEventListener('click', (e)=>{ if(e.t
   const el = document.getElementById(id);
   if(el) el.addEventListener('change', ()=>limparFlagManual(['admKcalFormula','admPtnFormula','admFibraFormula']));
 });
+
+/* ═══ Navegação por teclado ═══
+   Enter avança para o próximo campo em vez de não fazer nada, para não
+   precisar tirar a mão do teclado a cada campo. Em áreas de texto o Enter
+   continua quebrando linha; Ctrl+Enter gera a nota de qualquer lugar. */
+(function(){
+  const focaveis = () => {
+    const todos = [...document.querySelectorAll(
+      '#formCol input:not([type=checkbox]):not([type=radio]), #formCol select, #formCol textarea')]
+      .filter(el => !el.disabled && !el.readOnly && el.type !== 'hidden');
+    const visiveis = todos.filter(el => el.offsetParent !== null);
+    return visiveis.length ? visiveis : todos;
+  };
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){
+      e.preventDefault();
+      const b = document.getElementById('gerarBtn');
+      if(b) b.click();
+      return;
+    }
+    if(e.key !== 'Enter') return;
+    const alvo = e.target;
+    if(!alvo || alvo.tagName === 'TEXTAREA') return;                 /* texto longo mantém quebra de linha */
+    if(alvo.isContentEditable) return;                                /* blocos de nota editáveis */
+    if(alvo.tagName !== 'INPUT' && alvo.tagName !== 'SELECT') return;
+    const lista = focaveis();
+    const i = lista.indexOf(alvo);
+    if(i < 0) return;
+    e.preventDefault();
+    const prox = lista[i + (e.shiftKey ? -1 : 1)];
+    if(prox){ prox.focus(); if(prox.select) try{ prox.select(); }catch(err){} }
+  });
+})();
 
 document.getElementById('gerarBtn').addEventListener('click', gerarTexto);
 
