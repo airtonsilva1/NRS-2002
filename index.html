@@ -2532,7 +2532,8 @@ const SUPLEMENTOS_CATALOG = {
 
 /* ═══ SELEÇÃO DE SUPLEMENTO (checkbox nos cards) ═══
    Só entra no texto da nota se o nutricionista marcar a caixa. */
-let SUPLEMENTOS_MARCADOS = {};   // { chave: '1x'|'2x'|'3x' }
+let SUPLEMENTOS_MARCADOS = {};
+let SUP_EXTRA = '';   // escolha livre, fora das sugestões   // { chave: '1x'|'2x'|'3x' }
 
 function caracteristicasSuplemento(s){
   const c = [];
@@ -2746,7 +2747,27 @@ function gerarSugestoesSuplemento(){
   });
   
   html += `</div>`;
-  
+
+  /* Escolha livre: qualquer item do catálogo, mesmo fora das sugestões.
+     Útil quando a conduta foge da árvore de decisão ou falta produto no estoque. */
+  html += `<div style="margin-top:12px; border-top:1px dashed var(--border); padding-top:11px;">`;
+  html += `<div style="font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px;">Outro suplemento (fora das sugestões)</div>`;
+  html += `<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">`;
+  html += `<select id="supExtra" style="flex:1; min-width:190px; font-size:12.5px; padding:6px 8px; border:1px solid var(--border-strong); border-radius:var(--radius-xs); background:var(--card); color:var(--text);">`;
+  html += `<option value="">— nenhum —</option>`;
+  Object.entries(SUPLEMENTOS_CATALOG)
+    .sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR'))
+    .forEach(([k,s])=>{
+      const sel = (k === SUP_EXTRA);
+      html += `<option value="${k}" ${sel?'selected':''}>${s.nome}</option>`;
+    });
+  html += `</select>`;
+  html += `<select id="supExtraFreq" style="font-size:12.5px; padding:6px 8px; border:1px solid var(--border-strong); border-radius:var(--radius-xs); background:var(--card); color:var(--text);">
+    <option value="1x">1x ao dia</option><option value="2x">2x ao dia</option><option value="3x">3x ao dia</option></select>`;
+  html += `</div>`;
+  html += `<div style="font-size:11px; color:var(--faint); margin-top:5px;">Ao escolher, a frase entra no texto da nota do mesmo jeito que as caixas acima.</div>`;
+  html += `</div>`;
+
   if(avisos.length > 0){
     html += `<div style="background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:var(--radius-xs); padding:9px 12px; margin-top:11px; font-size:12px; color:var(--text); line-height:1.55;">`;
     avisos.forEach(a => { html += `⚠️ ${a}<br/>`; });
@@ -3505,6 +3526,21 @@ function renderOutputBlocks(blocks){
     container.appendChild(wrap);
   });
   /* Checkbox de suplemento: marca/desmarca e regenera a nota já com (ou sem) o suplemento */
+  /* Seletor livre: entra e sai do texto igual às caixas de seleção */
+  const supExtra = container.querySelector('#supExtra');
+  const supExtraFreq = container.querySelector('#supExtraFreq');
+  if(supExtra){
+    const aplicarExtra = ()=>{
+      /* tira a escolha livre anterior antes de gravar a nova, para não acumular */
+      if(SUP_EXTRA && SUP_EXTRA !== supExtra.value) delete SUPLEMENTOS_MARCADOS[SUP_EXTRA];
+      SUP_EXTRA = supExtra.value || '';
+      if(SUP_EXTRA) SUPLEMENTOS_MARCADOS[SUP_EXTRA] = supExtraFreq ? supExtraFreq.value : '1x';
+      gerarTexto();
+    };
+    supExtra.addEventListener('change', aplicarExtra);
+    if(supExtraFreq) supExtraFreq.addEventListener('change', ()=>{ if(supExtra.value) aplicarExtra(); });
+  }
+
   container.querySelectorAll('.sup-check').forEach(chk=>{
     chk.addEventListener('change', ()=>{
       const k = chk.dataset.chave;
@@ -3798,7 +3834,7 @@ function resetTudo(){
   document.getElementById('andar').value = '2';
   document.getElementById('andarAutoHint').style.display = 'none';
   document.getElementById('dieta').value = 'branda';
-  SUPLEMENTOS_MARCADOS = {};
+  SUPLEMENTOS_MARCADOS = {}; SUP_EXTRA = '';
   document.querySelectorAll('#chipRestricoes input[type=checkbox]').forEach(cb=>cb.checked=false);
   document.getElementById('temperatura').value = '';
   document.getElementById('braden').value = 'sem registro';
