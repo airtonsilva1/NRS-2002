@@ -1971,7 +1971,9 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoAlergiasAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoComorbidadesAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoHoraLiberacao').style.display = isEvolucaoDieta ? '' : 'none';
-  document.getElementById('secaoTNE').style.display = isTNE ? '' : 'none';
+  const viaTerapia = ['enteral','parenteral'].indexOf(document.getElementById('dieta').value) >= 0;
+  const precisaTNE = isTNE || (tipo === 'revisita' && viaTerapia);
+  document.getElementById('secaoTNE').style.display = precisaTNE ? '' : 'none';
   document.getElementById('secaoTneVOCampos').style.display = (isTNE && segVal('segTneVO')==='sim') ? '' : 'none';
   document.getElementById('secaoTneDesmameCampos').style.display = (isTNE && segVal('segTneDesmame')==='sim') ? '' : 'none';
   document.getElementById('secaoDietaPrincipal').style.display = isTNE ? 'none' : '';
@@ -2379,6 +2381,9 @@ const FORMULAS_ENTERAIS = {
   fresubin_hp_energy: {nome:"Fresubin HP Energy", tipo:"polimérica, hipercalórica e hiperproteica", kcalMl:1.5, ptnMl:0.075},
   fresubin_1_2_hp_fibre: {nome:"Fresubin 1.2 HP Fibre", tipo:"polimérica, normocalórica, hiperproteica e com fibras", kcalMl:1.2, ptnMl:0.06, fibraMl:0.02},
   fresubin_2kcal_hp: {nome:"Fresubin 2kcal HP", tipo:"polimérica, hipercalórica (2,0 kcal/ml) e hiperproteica", kcalMl:2.0, ptnMl:0.1},
+  fresubin_energy_fibre: {nome:"Fresubin Energy Fibre", tipo:"polimérica, hipercalórica, normoproteica, com fibras", kcalMl:1.5, ptnMl:0.056},
+  fresubin_2kcal_hp_fibre: {nome:"Fresubin 2kcal HP Fibre", tipo:"polimérica, hipercalórica e hiperproteica, com fibras", kcalMl:2.0, ptnMl:0.1},
+  isosource_hn: {nome:"Isosource HN", tipo:"polimérica, normocalórica e hiperproteica", kcalMl:1.2, ptnMl:0.054},
   survimed_opd: {nome:"Survimed OPD Easy Bag", tipo:"oligomérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.045},
   diben: {nome:"Diben", tipo:"polimérica e normocalórica", kcalMl:1.0, ptnMl:0.0425},
   nutrison: {nome:"Nutrison", tipo:"polimérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.04},
@@ -3331,7 +3336,9 @@ function gerarTexto(){
   }
 
   /* ---------------- REVISITA / EVOLUÇÃO ---------------- */
-  if(tipoNota==='revisita'){
+  const revisitaTerapia = (tipoNota==='revisita' && (isEnteral || isParenteral));
+
+  if(tipoNota==='revisita' && !revisitaTerapia){
     const fiDetR = document.getElementById('fiDetalhe').value.trim();
     const hemoR = document.getElementById('hemodialise').value.trim();
     const aceitR = document.getElementById('aceitacaoAlimentar').value;
@@ -3409,7 +3416,7 @@ function gerarTexto(){
   }
 
   /* ---------------- REAVALIAÇÃO DE TNE ---------------- */
-  if(tipoNota==='tne'){
+  if(tipoNota==='tne' || revisitaTerapia){
     const BRADEN_RISCO_TXT = {"sem registro":"não avaliado","sem risco":"ausente","baixo risco":"baixo","risco moderado":"moderado","alto risco":"alto"};
     const MODO_INFUSAO_TXT = {BI:'bomba de infusão', gravitacional:'sistema gravitacional', intermitente:'infusão intermitente'};
 
@@ -3519,7 +3526,11 @@ function gerarTexto(){
     txtEduTne += `Oriento acompanhante quanto à alimentação via oral, que deverá ser ofertada apenas com acompanhamento da equipe de fonoaudiologia por solicitação médica e com alimentos que sejam ofertados exclusivamente do setor da nutrição, ${pronomeTne} compreende as informações prestadas. Reforço sobre o nosso QR code para marcação do cardápio digital de acompanhante e reforço sobre nossos horários de entrega das refeições.\n\n`;
     txtEduTne += `Oriento sobre o frigobar, que é para uso exclusivo do acompanhante.\n\n`;
     txtEduTne += `Mantenho setor à disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
-    blocks.push({titulo: viaParenteral ? 'Plano educacional de terapia nutricional parenteral' : 'Plano educacional de terapia nutricional enteral', texto: txtEduTne.trim()});
+    /* O plano educacional se aplica ao início/reavaliação da terapia.
+       Na revisita diária o texto da folha é só a evolução. */
+    if(!revisitaTerapia){
+      blocks.push({titulo: viaParenteral ? 'Plano educacional de terapia nutricional parenteral' : 'Plano educacional de terapia nutricional enteral', texto: txtEduTne.trim()});
+    }
   }
 
   // Adicionar sugestão de suplementação se houver risco nutricional
