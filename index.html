@@ -809,9 +809,57 @@
           <button data-val="revisita">Revisita / Evolução</button>
           <button data-val="evolucao_dieta">Evolução de dieta</button>
           <button data-val="tne">Reavaliação de TNE</button>
+          <button data-val="conduta">Conduta pontual</button>
         </div>
       </div>
       <div class="hint">Em "Revisita / Evolução", "Evolução de dieta" e "Reavaliação de TNE", peso e altura são opcionais — preencha só se quiser recalcular VET/proteína.</div>
+
+      <div id="secaoConduta">
+        <label class="first">Conduta registrada</label>
+        <select id="condutaTipo">
+          <option value="sup_inicio">Início de suplementação via oral</option>
+          <option value="sup_suspensao">Suspensão de suplementação</option>
+          <option value="sup_troca">Troca de suplemento</option>
+          <option value="restricao_hidrica">Restrição hídrica</option>
+          <option value="liberacao_hidrica">Liberação hídrica</option>
+          <option value="espessante">Início de espessante</option>
+          <option value="consistencia">Ajuste de consistência da dieta</option>
+          <option value="modulo">Início de módulo (proteico ou calórico)</option>
+          <option value="outra">Outra conduta</option>
+        </select>
+
+        <div id="condutaSupBox">
+          <div class="row">
+            <div>
+              <label>Suplemento</label>
+              <select id="condutaSuplemento"><option value="">— selecione —</option></select>
+            </div>
+            <div>
+              <label>Frequência</label>
+              <select id="condutaFreq">
+                <option value="1x">1x ao dia</option>
+                <option value="2x">2x ao dia</option>
+                <option value="3x">3x ao dia</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="condutaVolumeBox">
+          <label>Volume (ml/dia)</label>
+          <input type="text" inputmode="numeric" id="condutaVolume" placeholder="ex: 1000">
+        </div>
+
+        <div id="condutaConsistBox">
+          <label>Nova consistência</label>
+          <input type="text" id="condutaConsistencia" placeholder="ex: pastosa">
+        </div>
+
+        <label>Motivo / observação <span style="font-weight:normal;color:var(--faint);">— opcional</span></label>
+        <input type="text" id="condutaMotivo" placeholder="ex: baixa aceitação alimentar">
+
+        <div class="hint">Gera dois blocos: a evolução da conduta e o plano educacional de orientação ao paciente e acompanhante.</div>
+      </div>
 
       <div id="secaoDietaPrincipal">
       <label class="first">Conduta conforme médico <span style="font-weight:normal;color:#888;">— opcional</span></label>
@@ -1965,12 +2013,22 @@ function atualizarVisibilidadePorTipo(){
   const isAdmissao = tipo === 'admissao';
   const isEvolucaoDieta = tipo === 'evolucao_dieta';
   const isTNE = tipo === 'tne';
+  const isConduta = tipo === 'conduta';
 
   document.getElementById('secaoTriagemAdmissao').style.display = isAdmissao ? '' : 'none';
   document.getElementById('secaoRestricoesAdmissao').style.display = (isAdmissao || isEvolucaoDieta || tipo === 'revisita') ? '' : 'none';
   document.getElementById('secaoAlergiasAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoComorbidadesAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoHoraLiberacao').style.display = isEvolucaoDieta ? '' : 'none';
+  /* Campos da conduta: só o que a conduta escolhida pede */
+  document.getElementById('secaoConduta').style.display = isConduta ? '' : 'none';
+  if(isConduta){
+    const ct = document.getElementById('condutaTipo').value;
+    document.getElementById('condutaSupBox').style.display   = ['sup_inicio','sup_troca','modulo'].indexOf(ct)>=0 ? '' : 'none';
+    document.getElementById('condutaVolumeBox').style.display= ['restricao_hidrica','liberacao_hidrica'].indexOf(ct)>=0 ? '' : 'none';
+    document.getElementById('condutaConsistBox').style.display = (ct==='consistencia') ? '' : 'none';
+  }
+
   const viaTerapia = ['enteral','parenteral'].indexOf(document.getElementById('dieta').value) >= 0;
   const precisaTNE = isTNE || (tipo === 'revisita' && viaTerapia);
   document.getElementById('secaoTNE').style.display = precisaTNE ? '' : 'none';
@@ -2276,7 +2334,7 @@ document.getElementById('leito').addEventListener('input', function(){
     hint.style.display = 'none';
   }
 });
-['andar','dieta','tempoInternacao','intervaloEvolucao'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
+['andar','dieta','tempoInternacao','intervaloEvolucao','condutaTipo'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
 document.querySelectorAll('#chipRestricoes input[type=checkbox]').forEach(cb=>cb.addEventListener('change', recalc));
 selPerfil.addEventListener('change', recalc);
 
@@ -2645,6 +2703,14 @@ function conflitosDoSuplemento(chave){
   return out;
 }
 
+/* VET da EMTN por kg — o valor vem da equipe, então dividimos pelo peso informado */
+function porKgEmtn(valor){
+  const v = parseFloat(String(valor).replace(',', '.'));
+  const p = parseFloat(String(document.getElementById('peso').value).replace(',', '.'));
+  if(!v || !p) return '';
+  return ` (${(v/p).toFixed(1).replace('.', ',')} kcal/kg)`;
+}
+
 function fraseSuplementoSelecionado(prefixo){
   const chaves = Object.keys(SUPLEMENTOS_MARCADOS);
   if(chaves.length === 0) return '';
@@ -2661,6 +2727,19 @@ function fraseSuplementoSelecionado(prefixo){
 
 /* Menu de suplemento em uso: alimentado pelo mesmo catálogo das sugestões,
    em ordem alfabética. Serve para o paciente que JÁ usa suplemento. */
+function preencherMenuConduta(){
+  const sel = document.getElementById('condutaSuplemento');
+  if(!sel || sel.dataset.pronto === '1') return;
+  Object.entries(SUPLEMENTOS_CATALOG)
+    .sort((a,b)=>a[1].nome.localeCompare(b[1].nome,'pt-BR'))
+    .forEach(([chave,s])=>{
+      const op = document.createElement('option');
+      op.value = chave; op.textContent = s.nome;
+      sel.appendChild(op);
+    });
+  sel.dataset.pronto = '1';
+}
+
 function preencherMenuSuplementos(){
   const sel = document.getElementById('supEmUso');
   if(!sel || sel.dataset.pronto === '1') return;
@@ -3255,7 +3334,7 @@ function gerarTexto(){
     } else if(isEnteral || isParenteral){
       const vetEmtnAdm2 = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
       txtEvolucao += `Paciente segue recebendo dieta ${isEnteral?'enteral':'parenteral'}: ${isEnteral?descreverFormulaEnteralAdm():descreverFormulaParenteralAdm()}.\n`;
-      txtEvolucao += `Planejamento terapêutico: VET final proposto pela EMTN de ${vetEmtnAdm2} kcal.\n`;
+      txtEvolucao += `Planejamento terapêutico: VET final proposto pela EMTN de ${vetEmtnAdm2} kcal${porKgEmtn(vetEmtnAdm2)}.\n`;
       txtEvolucao += `Oriento quanto características da dieta liberada, acompanhante compreende as informações prestadas.\n`;
       txtEvolucao += `Dietoterapia ajustada aos efeitos colaterais e interações medicamentosas. Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     } else {
@@ -3323,7 +3402,7 @@ function gerarTexto(){
       const vetEmtnNrs = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
       txtNrsFinal += `Planejamento terapêutico: VET proposto pela EMTN ${vetEmtnNrs} kcal.\n`;
     } else {
-      txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`;
+      txtNrsFinal += `Planejamento terapêutico: VET proposto ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n`;
     }
     txtNrsFinal += `Próxima reavaliação: ${formatDate(calc.proxReavaliacao)}\n`;
     txtNrsFinal += `Segue em acompanhamento nutricional.`;
@@ -3353,7 +3432,7 @@ function gerarTexto(){
     } else if(isEnteral || isParenteral){
       txt += `Realizo revisita ao paciente, segue recebendo dieta ${isEnteral?'enteral':'parenteral'} conforme prescrição médica.\n`;
       txt += calc.vet!==null
-        ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal e ${calc.ptn} g de proteína.\n`
+        ? `Planejamento terapêutico: VET proposto diário pela EMTN: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg) e ${calc.ptn} g de proteína (${calc.perfil.ptn} g/kg).\n`
         : `Planejamento terapêutico: mantido VET/proteína já estabelecido pela EMTN.\n`;
     } else {
       txt += `Realizo revisita ao paciente, segue com dieta prescrita na consistência ${V(dietaTxt.toLowerCase())}.${notaProgressaoDietaMedico()}\n`;
@@ -3380,7 +3459,7 @@ function gerarTexto(){
 
     if(!isJejum && !isEnteral && !isParenteral){
       txt += calc.vet!==null
-        ? `Planejamento terapêutico: VET proposto diário: ${calc.vet} kcal. Proteínas ${calc.ptn} g/dia.\n`
+        ? `Planejamento terapêutico: VET proposto diário: ${calc.vet} kcal (${calc.perfil.kcal} kcal/kg). Proteínas ${calc.ptn} g/dia (${calc.perfil.ptn} g/kg).\n`
         : `Planejamento terapêutico: mantido plano nutricional já estabelecido, sem alterações.\n`;
     }
     txt += `Dietoterapia ajustada conforme efeitos colaterais e interações medicamentosas.\n`;
@@ -3416,6 +3495,79 @@ function gerarTexto(){
   }
 
   /* ---------------- REAVALIAÇÃO DE TNE ---------------- */
+  /* ═══ CONDUTA PONTUAL ═══
+     Registro de uma conduta isolada (início de suplemento, restrição hídrica,
+     espessante, ajuste de consistência). Sai em dois blocos: a evolução da
+     conduta e o plano educacional de orientação. */
+  if(tipoNota==='conduta'){
+    const ct   = document.getElementById('condutaTipo').value;
+    const motivo = document.getElementById('condutaMotivo').value.trim();
+    const vol  = document.getElementById('condutaVolume').value.trim();
+    const cons = document.getElementById('condutaConsistencia').value.trim();
+    const chaveSup = document.getElementById('condutaSuplemento').value;
+    const sup  = chaveSup ? SUPLEMENTOS_CATALOG[chaveSup] : null;
+    const freq = document.getElementById('condutaFreq').value || '1x';
+    const pron = sexoVal === 'M' ? 'o mesmo' : 'a mesma';
+
+    const descSup = sup
+      ? `${sup.nome} (${sup.proteina} g de proteína e ${sup.kcal} kcal por ${sup.ml ? sup.ml + (sup.tipo==='po'?'g':'ml') : 'porção'})`
+      : '[completar]';
+    const caracSup = sup ? caracteristicasSuplemento(sup) : '';
+
+    let evo = `#Pela Nutrição às ${hora}\n`;
+    let edu = '';
+
+    if(ct === 'sup_inicio'){
+      evo += `Início de suplementação via oral: ${descSup}, ${freq} ao dia.\n`;
+      evo += `Suplementação ${caracSup}, ofertada entre as refeições.\n`;
+      edu += `Oriento paciente e acompanhante quanto ao início da suplementação via oral, suas características e a importância da aceitação integral do volume ofertado.\n`;
+      edu += `Oriento que o suplemento deve ser ofertado entre as refeições, sem substituir a dieta prescrita.\n`;
+    }
+    else if(ct === 'sup_suspensao'){
+      evo += `Suspensão da suplementação via oral${sup ? `: ${sup.nome}` : ''}.\n`;
+      edu += `Oriento paciente e acompanhante quanto à suspensão da suplementação e ao retorno à dieta via oral exclusiva.\n`;
+    }
+    else if(ct === 'sup_troca'){
+      evo += `Troca de suplementação via oral para ${descSup}, ${freq} ao dia.\n`;
+      evo += `Suplementação ${caracSup}, ofertada entre as refeições.\n`;
+      edu += `Oriento paciente e acompanhante quanto à troca do suplemento, suas novas características e a forma de oferta.\n`;
+    }
+    else if(ct === 'restricao_hidrica'){
+      evo += `Início de restrição hídrica${vol ? `, com volume total de ${vol} ml/dia` : ''}, conforme conduta médica.\n`;
+      edu += `Oriento paciente e acompanhante quanto à restrição hídrica${vol ? ` de ${vol} ml/dia` : ''}, incluindo a contagem de todos os líquidos ofertados — água, sucos, sopas, chás, gelatina e medicações diluídas.\n`;
+      edu += `Reforço que bebidas trazidas por acompanhante também entram nesse total.\n`;
+    }
+    else if(ct === 'liberacao_hidrica'){
+      evo += `Liberação hídrica${vol ? `, com volume de ${vol} ml/dia` : ''}, conforme conduta médica.\n`;
+      edu += `Oriento paciente e acompanhante quanto à liberação hídrica e ao volume a ser ofertado ao longo do dia.\n`;
+    }
+    else if(ct === 'espessante'){
+      evo += `Início de espessante alimentar${cons ? ` na consistência ${cons}` : ''}, conforme avaliação da fonoaudiologia.\n`;
+      edu += `Oriento paciente e acompanhante quanto ao uso do espessante em todos os líquidos ofertados${cons ? `, mantendo a consistência ${cons}` : ''}, e quanto ao risco de broncoaspiração caso a consistência não seja respeitada.\n`;
+    }
+    else if(ct === 'consistencia'){
+      evo += `Ajuste da consistência da dieta para ${cons || '[completar]'}, conforme avaliação nutricional.\n`;
+      edu += `Oriento paciente e acompanhante quanto à nova consistência da dieta e às características dos alimentos que serão ofertados.\n`;
+    }
+    else if(ct === 'modulo'){
+      evo += `Início de módulo: ${descSup}, ${freq} ao dia, acrescentado às preparações da dieta.\n`;
+      edu += `Oriento paciente e acompanhante quanto ao módulo acrescentado às preparações, sem alterar a consistência ou o volume da dieta.\n`;
+    }
+    else {
+      evo += `${motivo || '[descrever a conduta]'}.\n`;
+      edu += `Oriento paciente e acompanhante quanto à conduta adotada e suas características.\n`;
+    }
+
+    if(motivo && ct !== 'outra') evo += `Motivo: ${motivo}.\n`;
+    evo += `Classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
+
+    edu += `${pron.charAt(0).toUpperCase()+pron.slice(1)} compreende as informações prestadas.\n`;
+    edu += `Mantenho setor à disposição, e que em caso de dúvidas entrar em contato com o setor da Nutrição nos ramais 2956 ou 2930.`;
+
+    blocks.push({titulo:'Evolução de conduta', texto: evo.trim()});
+    blocks.push({titulo:'Plano educacional da conduta', texto: edu.trim()});
+  }
+
   if(tipoNota==='tne' || revisitaTerapia){
     const BRADEN_RISCO_TXT = {"sem registro":"não avaliado","sem risco":"ausente","baixo risco":"baixo","risco moderado":"moderado","alto risco":"alto"};
     const MODO_INFUSAO_TXT = {BI:'bomba de infusão', gravitacional:'sistema gravitacional', intermitente:'infusão intermitente'};
@@ -3458,7 +3610,7 @@ function gerarTexto(){
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
-      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal.\n`;
+      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal${porKgEmtn(vetEmtn)}.\n`;
       txt += `\nNas últimas 24 h:\n`;
       txt += `- Volume Infundido: ${volumeInfundido || '[completar]'} ml, sendo ${percInfusao}% do volume prescrito;\n`;
       txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
@@ -3496,7 +3648,7 @@ function gerarTexto(){
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
-      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal.\n`;
+      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal${porKgEmtn(vetEmtn)}.\n`;
       txt += `\nNas últimas 24 h:\n`;
       txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito;\n`;
       txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
@@ -3907,7 +4059,7 @@ function montarExportacao(){
     "Restrições": restr || "",
     "Alergias": alergTudo,
     "Preferências": document.getElementById('sbm_preferencias').value.trim(),
-    "VET e Proteína": `VET: ${calc.vet} kcal | PTN: ${calc.ptn} g`,
+    "VET e Proteína": `VET: ${calc.vet} kcal (${String(calc.perfil.kcal).replace(".",",")} kcal/kg) | PTN: ${String(calc.ptn).replace(".",",")} g (${String(calc.perfil.ptn).replace(".",",")} g/kg)`,
     "HGT": hgtTexto(),
     "UFI": document.getElementById('sbm_ufi').value.trim(),
     "Aceitação": document.getElementById('sbm_aceitacao').value.trim(),
@@ -4259,6 +4411,7 @@ try{
 atualizarContadorDisplay();
 atualizarBotaoLeito();
 preencherMenuSuplementos();
+preencherMenuConduta();
 recalc();
 
 /* ---------- botão voltar ao topo ---------- */
