@@ -644,14 +644,14 @@
 
       <label>Andar</label>
       <select id="andar">
-        <option value="1">1º andar — fechado</option>
-        <option value="1A">1A (leitos 101–115) — aberto</option>
+        <option value="1A">1A (leitos 101–114) — aberto</option>
+        <option value="1B">1B (leitos 115–130) — fechado</option>
         <option value="2" selected>2º andar — aberto</option>
         <option value="3">3º andar — aberto</option>
         <option value="4">4º andar — fechado</option>
         <option value="5">5º andar — fechado</option>
       </select>
-      <div class="hint">Setores fechados (1º, 4º, 5º) = terciário. Setores abertos (1A, 2º, 3º) = primário, ou secundário se houver risco nutricional.</div>
+      <div class="hint">Setores fechados (1B, 4º, 5º) = terciário. Setores abertos (1A, 2º, 3º) = primário, ou secundário se houver risco nutricional.</div>
       <div class="hint" id="andarAutoHint" style="display:none;"></div>
 
       <div id="secaoTriagemAdmissao">
@@ -1989,7 +1989,7 @@ function calcularZPediatrico(){
   return resultado;
 }
 
-const ANDARES_FECHADOS = ['1','4','5'];
+const ANDARES_FECHADOS = ['1B','4','5'];
 const PERFIS_SECUNDARIOS = ['onco_tratamento','onco_desnutrido','onco_paliativo','onco_sobrevivente','onco_obesidade','onco_caquexia'];
 
 function nivelAuto(){
@@ -1999,8 +1999,15 @@ function nivelAuto(){
   const idade = parseInt(document.getElementById('idade').value)||null;
   const nrs = nrsTotal();
 
-  if(ANDARES_FECHADOS.includes(andar)) return {nivel:'terciario', motivo:'setor fechado ('+andar+'º andar)'};
-  if(dietaRaw==='enteral' || dietaRaw==='parenteral') return {nivel:'terciario', motivo:'TNE/TNP'};
+  /* Paciente em terapia nutricional é terciário, independentemente do andar.
+     Na aba de Reavaliação de TNE o campo "dieta prescrita" pode continuar em
+     branda/geral — então o próprio tipo de nota já caracteriza a terapia. */
+  const emTerapia = (dietaRaw==='enteral' || dietaRaw==='parenteral') || segVal('segTipoNota')==='tne';
+  if(emTerapia) return {nivel:'terciario', motivo:'terapia nutricional enteral/parenteral'};
+  if(ANDARES_FECHADOS.includes(andar)){
+    const rotuloSetor = andar==='1B' ? '1B' : andar+'º andar';
+    return {nivel:'terciario', motivo:'setor fechado ('+rotuloSetor+')'};
+  }
   if(idade!==null && idade<18) return {nivel:'terciario', motivo:'menor de 18 anos fora da pediatria'};
   if(nrs>=3) return {nivel:'secundario', motivo:'risco nutricional (NRS '+nrs+') em setor aberto'};
   if(PERFIS_SECUNDARIOS.includes(perfilKey)) return {nivel:'secundario', motivo:'perfil oncológico'};
@@ -2316,9 +2323,10 @@ function recalc(){
 function andarPeloLeito(leitoStr){
   const n = parseInt((leitoStr||'').replace(/\D/g,''));
   if(!n) return null;
-  if(n>=101 && n<=115) return '1A';
+  if(n>=101 && n<=114) return '1A';
+  if(n>=115 && n<=130) return '1B';
   const primeiroDigito = Math.floor(n/100);
-  if(primeiroDigito>=1 && primeiroDigito<=5) return String(primeiroDigito);
+  if(primeiroDigito>=2 && primeiroDigito<=5) return String(primeiroDigito);
   return null;
 }
 
