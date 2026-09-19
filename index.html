@@ -2442,6 +2442,7 @@ const FORMULAS_ENTERAIS = {
   fresubin_energy_fibre: {nome:"Fresubin Energy Fibre", tipo:"polimérica, hipercalórica, normoproteica, com fibras", kcalMl:1.5, ptnMl:0.056},
   fresubin_2kcal_hp_fibre: {nome:"Fresubin 2kcal HP Fibre", tipo:"polimérica, hipercalórica e hiperproteica, com fibras", kcalMl:2.0, ptnMl:0.1},
   isosource_hn: {nome:"Isosource HN", tipo:"polimérica, normocalórica e hiperproteica", kcalMl:1.2, ptnMl:0.054},
+  survimed_opd_hn: {nome:"Survimed OPD HN", tipo:"oligomérica, hipercalórica e hiperproteica, com ômega-3", kcalMl:1.33, ptnMl:0.067},
   survimed_opd: {nome:"Survimed OPD Easy Bag", tipo:"oligomérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.045},
   diben: {nome:"Diben", tipo:"polimérica e normocalórica", kcalMl:1.0, ptnMl:0.0425},
   nutrison: {nome:"Nutrison", tipo:"polimérica, normocalórica e normoproteica", kcalMl:1.0, ptnMl:0.04},
@@ -3332,9 +3333,10 @@ function gerarTexto(){
       txtEvolucao += `Dietoterapia será ajustada aos efeitos colaterais e interações medicamentosas quando dieta for liberada.\n`;
       txtEvolucao += `Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     } else if(isEnteral || isParenteral){
-      const vetEmtnAdm2 = document.getElementById('admVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
+      const vetEmtnAdmCampo = document.getElementById('admVetEmtn').value.trim();
+      const vetEmtnAdm2 = vetEmtnAdmCampo || '[PREENCHER VET DA EMTN]';
       txtEvolucao += `Paciente segue recebendo dieta ${isEnteral?'enteral':'parenteral'}: ${isEnteral?descreverFormulaEnteralAdm():descreverFormulaParenteralAdm()}.\n`;
-      txtEvolucao += `Planejamento terapêutico: VET final proposto pela EMTN de ${vetEmtnAdm2} kcal${porKgEmtn(vetEmtnAdm2)}.\n`;
+      txtEvolucao += `Planejamento terapêutico: VET final proposto pela EMTN de ${vetEmtnAdm2} kcal.\n`;
       txtEvolucao += `Oriento quanto características da dieta liberada, acompanhante compreende as informações prestadas.\n`;
       txtEvolucao += `Dietoterapia ajustada aos efeitos colaterais e interações medicamentosas. Paciente classificado como nível de assistência ${calc.nivel}, segue em acompanhamento nutricional.`;
     } else {
@@ -3579,7 +3581,10 @@ function gerarTexto(){
     const taxaInfusao = document.getElementById('tneTaxaInfusao').value;
     const kcalFormula = document.getElementById('tneKcalFormula').value || (calc.vet!==null ? calc.vet : '[completar]');
     const ptnFormula = document.getElementById('tnePtnFormula').value || (calc.ptn!==null ? calc.ptn : '[completar]');
-    const vetEmtn = document.getElementById('tneVetEmtn').value || (calc.vet!==null ? calc.vet : '[completar]');
+    /* O VET da EMTN é definido pela equipe — não estimamos nem derivamos por kg.
+       Se ninguém preencheu, o texto sai com um aviso em destaque. */
+    const vetEmtnCampo = document.getElementById('tneVetEmtn').value.trim();
+    const vetEmtn = vetEmtnCampo || '[PREENCHER VET DA EMTN]';
     const modoInfusaoRaw = document.getElementById('tneModoInfusao').value;
     const modoInfusao = MODO_INFUSAO_TXT[modoInfusaoRaw] || modoInfusaoRaw;
     const volumeInfundido = document.getElementById('tneVolumeInfundido').value;
@@ -3610,7 +3615,7 @@ function gerarTexto(){
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
-      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal${porKgEmtn(vetEmtn)}.\n`;
+      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal.\n`;
       txt += `\nNas últimas 24 h:\n`;
       txt += `- Volume Infundido: ${volumeInfundido || '[completar]'} ml, sendo ${percInfusao}% do volume prescrito;\n`;
       txt += `- Função intestinal ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
@@ -3640,7 +3645,9 @@ function gerarTexto(){
       /* Redação da folha institucional: tipo de formulação + via + modo + volume/taxa + kcal/proteína.
          O nome comercial entra entre parênteses só quando a fórmula foi escolhida na lista. */
       const marca = (fEntVal!=='outra_enteral' && nomeFormula) ? ` (${nomeFormula})` : (fEntOutra ? ` (${fEntOutra})` : '');
-      const formulacao = tipoEnt ? tipoEnt.split(',')[0].trim().replace(/\s*\([^)]*\)/,'') : 'polimérica';
+      const formulacao = tipoEnt
+        ? tipoEnt.replace(/\s*\([^)]*\)/g,'').split(',')[0].trim()
+        : 'polimérica';
       txt += `Recebendo dieta enteral ${formulacao}${marca}, via ${via}, em ${modoInfusao}, ${volumePrescrito} ml à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína${fibraTxt}${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
@@ -3648,7 +3655,7 @@ function gerarTexto(){
       if(emDesmame && desmameDetalhe){
         txt += `Em desmame, associado a ${viaParenteral ? 'nutrição enteral' : 'nutrição parenteral'} concomitante: ${desmameDetalhe}.\n`;
       }
-      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal${porKgEmtn(vetEmtn)}.\n`;
+      txt += `Planejamento terapêutico: VET final proposto pela EMTN ${vetEmtn} Kcal.\n`;
       txt += `\nNas últimas 24 h:\n`;
       txt += `- Volume Infundido: ${volumeInfundido} ml, sendo ${percInfusao}% do volume prescrito;\n`;
       txt += `- Função Intestinal: ${FI_REVISITA[funcaoIntestinalVal]}${document.getElementById('fiDetalhe').value.trim()?`, ${document.getElementById('fiDetalhe').value.trim()}`:''};\n`;
@@ -3754,11 +3761,11 @@ function renderOutputBlocks(blocks){
   const container = document.getElementById('outputContainer');
   container.innerHTML = '';
 
-  const totalPendencias = blocks.filter(b=>!b.isHTML).reduce((acc,b)=>acc + ((b.texto.match(/\[completar\]/g)||[]).length), 0);
+  const totalPendencias = blocks.filter(b=>!b.isHTML).reduce((acc,b)=>acc + ((b.texto.match(/\[completar\]|\[PREENCHER VET DA EMTN\]/g)||[]).length), 0);
   if(totalPendencias > 0){
     const aviso = document.createElement('div');
     aviso.style.cssText = 'background:var(--danger-soft); border:1px solid var(--danger); color:var(--danger); border-radius:var(--radius-xs); padding:10px 12px; margin-bottom:12px; font-size:12.5px; font-weight:600;';
-    aviso.innerHTML = `⚠️ ${totalPendencias} campo(s) marcado(s) como <b>[completar]</b> — preencha os dados no formulário ou edite o texto antes de colar no prontuário.`;
+    aviso.innerHTML = `⚠️ ${totalPendencias} campo(s) pendente(s) em destaque no texto — preencha os dados no formulário ou edite o texto antes de colar no prontuário.`;
     container.appendChild(aviso);
   }
   blocks.forEach((b, i)=>{
@@ -3779,6 +3786,9 @@ function renderOutputBlocks(blocks){
       /* Destaca lacunas que não podem ir para o prontuário */
       textoComNegrito = textoComNegrito.replace(/\[completar\]/g,
         '<mark style="background:var(--danger-soft); color:var(--danger); font-weight:700; padding:0 4px; border-radius:3px;">[completar]</mark>');
+      /* VET da EMTN em falta: precisa saltar aos olhos antes de colar no prontuário */
+      textoComNegrito = textoComNegrito.replace(/\[PREENCHER VET DA EMTN\]/g,
+        '<mark style="background:var(--danger-soft); color:var(--danger); font-weight:900; text-transform:uppercase; letter-spacing:.5px; padding:1px 6px; border-radius:3px; border:1px solid var(--danger);">[PREENCHER VET DA EMTN]</mark>');
       contentHTML = textoComNegrito;
     }
     
