@@ -1306,9 +1306,6 @@
         </div>
       </div>
 
-      </div>
-      </div>
-
       <div id="catalogoNaoPadraoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(16,32,48,0.45); z-index:9999; overflow:auto; backdrop-filter:blur(2px);">
         <div style="background:var(--card); color:var(--text); margin:24px auto; padding:22px; border-radius:var(--radius); max-width:1250px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-pop); border:1px solid var(--border); font-family:var(--font-body);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:2px solid var(--warn-border); padding-bottom:12px;">
@@ -2114,7 +2111,10 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoRevisitaCampos').style.display = (isAdmissao || isEvolucaoDieta || isTNE) ? 'none' : '';
   document.getElementById('secaoSuplementoUso').style.display = (tipo === 'revisita' || isEvolucaoDieta) ? '' : 'none';
 
-  if(!isTNE && !isEvolucaoDieta){
+  /* Estes campos de fórmula (admFormulaEnteral etc.) existem só para a Admissão —
+     a Revisita/Reavaliação usa os campos de secaoTNE. Antes a condição também
+     deixava passar "revisita", duplicando os campos na tela. */
+  if(isAdmissao){
     const dietaVal = document.getElementById('dieta').value;
     document.getElementById('secaoFormulaAdmEnteral').style.display = (dietaVal==='enteral') ? '' : 'none';
     document.getElementById('secaoFormulaAdmParenteral').style.display = (dietaVal==='parenteral') ? '' : 'none';
