@@ -569,6 +569,7 @@
       <button id="fonteBtn" type="button" class="mini-btn" title="Aumentar fonte (modo celular)">🔤 Fonte</button>
       <button id="imprimirBtn" type="button" class="mini-btn" title="Imprimir ou salvar como PDF">🖨️ Imprimir/PDF</button>
       <button id="catalogoSupBtn" type="button" class="mini-btn" title="Ver catálogo de suplementos da casa">Catálogo de suplementos</button>
+      <button id="catalogoNaoPadraoBtn" type="button" class="mini-btn" title="Suplementos fora do estoque padrão, para consulta">Suplementos não padrão</button>
       <button id="desfazerLimparBtn" type="button" class="mini-btn" style="display:none;background:#fff3cd;border-color:#e0c26a;">↩ Desfazer limpeza</button>
       <button id="limparBtn" type="button" style="background:#fff;border:1px solid #c33;color:#c33;font-size:12.5px;font-weight:bold;padding:8px 14px;border-radius:3px;cursor:pointer;">Limpar dados</button>
       <div class="clock">
@@ -1191,6 +1192,17 @@
         <label>Bolsa parenteral</label>
         <select id="tneFormulaParenteral"></select>
         <input type="text" id="tneFormulaParenteralOutra" placeholder="nome da bolsa, se selecionou 'Outra'" style="display:none;margin-top:6px;">
+
+        <label style="display:flex; align-items:center; gap:7px; margin-top:10px; cursor:pointer; font-weight:normal;">
+          <input type="checkbox" id="tneSegundaBolsaAtiva" style="width:auto; margin:0;">
+          Associada a uma segunda bolsa parenteral
+        </label>
+        <div id="secaoSegundaBolsaParenteral" style="display:none; margin-top:6px;">
+          <label>Segunda bolsa parenteral</label>
+          <select id="tneFormulaParenteral2"></select>
+          <input type="text" id="tneFormulaParenteral2Outra" placeholder="nome da bolsa, se selecionou 'Outra'" style="display:none;margin-top:6px;">
+          <div class="hint">Kcal e proteína informados abaixo continuam sendo o TOTAL das duas bolsas (o valor final proposto pela EMTN já soma as duas).</div>
+        </div>
       </div>
 
       <div class="row">
@@ -1289,6 +1301,43 @@
               </tr>
             </thead>
             <tbody id="tabelaCatalogo"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      </div>
+      </div>
+
+      <div id="catalogoNaoPadraoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(16,32,48,0.45); z-index:9999; overflow:auto; backdrop-filter:blur(2px);">
+        <div style="background:var(--card); color:var(--text); margin:24px auto; padding:22px; border-radius:var(--radius); max-width:1250px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-pop); border:1px solid var(--border); font-family:var(--font-body);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:2px solid var(--warn-border); padding-bottom:12px;">
+            <h2 style="margin:0; color:var(--accent-dark); font-size:18px;">Suplementos não padrão da casa</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button id="imprimirNaoPadrao" style="background:var(--accent); color:#fff; border:none; border-radius:var(--radius-xs); font-size:12.5px; font-weight:700; cursor:pointer; padding:8px 14px; font-family:var(--font-body);">Imprimir</button>
+              <button id="fecharNaoPadrao" style="background:var(--card-2); border:1px solid var(--border); border-radius:var(--radius-xs); font-size:18px; cursor:pointer; width:32px; height:32px; color:var(--muted);">✕</button>
+            </div>
+          </div>
+          <div style="background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:var(--radius-xs); padding:10px 12px; font-size:12px; color:#7a5c12; margin-bottom:14px; line-height:1.5;">
+            <b>Não fazem parte do estoque padrão do Copa Star</b> — é só uma referência para quando o suplemento habitual não está disponível ou não serve para o caso.
+            Não entram na sugestão automática da ferramenta. Onde estiver "—" ou "conferir", os números não foram confirmados numa fonte brasileira específica nesta revisão —
+            <b>confira sempre o rótulo do lote antes de indicar.</b> Não inclui itens da Nutricia por pedido explícito.
+          </div>
+          <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:880px;">
+            <thead>
+              <tr style="background:var(--warn-bg); border-bottom:2px solid var(--warn-border);">
+                <th style="border:1px solid var(--border); padding:9px; text-align:left; color:var(--accent-dark);">PRODUTO</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--accent-dark);">FABRICANTE</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:left; color:var(--accent-dark);">CATEGORIA</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--accent-dark);">APRESENT.</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:#8a6d1a;">KCAL</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--danger);">PROTEÍNA</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:center; color:var(--accent-dark);">LACTOSE</th>
+                <th style="border:1px solid var(--border); padding:9px; text-align:left; color:var(--accent-dark);">OBSERVAÇÃO</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaNaoPadrao"></tbody>
           </table>
           </div>
         </div>
@@ -2019,6 +2068,19 @@ function atualizarVisibilidadePorTipo(){
   const tipo = segVal('segTipoNota');
   const isAdmissao = tipo === 'admissao';
   const isEvolucaoDieta = tipo === 'evolucao_dieta';
+
+  /* "Evolução de dieta" é sobre progressão de consistência ORAL — não existe
+     "evolução de dieta" para quem está em terapia enteral/parenteral (esses casos
+     usam Revisita ou Reavaliação de TNE). Bloqueamos as duas opções aqui para não
+     gerar um texto sem sentido, e devolvemos a dieta para "Branda" se alguém trocar
+     de aba com uma delas já selecionada. */
+  const optEnteral = document.querySelector('#dieta option[value="enteral"]');
+  const optParenteral = document.querySelector('#dieta option[value="parenteral"]');
+  if(optEnteral) optEnteral.disabled = isEvolucaoDieta;
+  if(optParenteral) optParenteral.disabled = isEvolucaoDieta;
+  if(isEvolucaoDieta && ['enteral','parenteral'].includes(document.getElementById('dieta').value)){
+    document.getElementById('dieta').value = 'branda';
+  }
   const isTNE = tipo === 'tne';
   const isConduta = tipo === 'conduta';
 
@@ -2075,7 +2137,7 @@ function atualizarVisibilidadePorTipo(){
     document.getElementById('secaoVetEmtnAdm').style.display = 'none';
   }
 
-  if(isTNE){
+  if(precisaTNE){
     const viaParenteral = VIAS_PARENTERAIS.includes(document.getElementById('tneVia').value);
     document.getElementById('secaoModoInfusaoEnteral').style.display = viaParenteral ? 'none' : '';
     document.getElementById('secaoFormulaEnteral').style.display = viaParenteral ? 'none' : '';
@@ -2085,6 +2147,13 @@ function atualizarVisibilidadePorTipo(){
     document.getElementById('tneFormulaEnteralOutra').style.display = (fEnt==='outra_enteral') ? '' : 'none';
     const fPar = document.getElementById('tneFormulaParenteral').value;
     document.getElementById('tneFormulaParenteralOutra').style.display = (fPar==='outra_parenteral') ? '' : 'none';
+
+    /* Segunda bolsa parenteral, quando associada (algumas condutas correm duas
+       bolsas ao mesmo tempo — ex.: central + periférica) */
+    document.getElementById('secaoSegundaBolsaParenteral').style.display =
+      (viaParenteral && document.getElementById('tneSegundaBolsaAtiva').checked) ? '' : 'none';
+    const fPar2 = document.getElementById('tneFormulaParenteral2').value;
+    document.getElementById('tneFormulaParenteral2Outra').style.display = (fPar2==='outra_parenteral') ? '' : 'none';
 
     const hint = document.getElementById('tneTipoFormulaHint');
     if(!viaParenteral && FORMULAS_ENTERAIS[fEnt]){
@@ -2309,7 +2378,7 @@ function recalc(){
   return {imc, classificacao, vet, ptn, prox: proxEvolucao, proxEvolucao, proxReavaliacao, perfil, nivel, pesoIdeal};
 }
 ['peso','altura','idade','pesoAnterior','tneVolumePrescrito','tneVolumeInfundido','admVolume'].forEach(id=>document.getElementById(id).addEventListener('input', recalc));
-['tneVia','tneFormulaEnteral','tneFormulaParenteral','admFormulaEnteral','admFormulaParenteral'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
+['tneVia','tneFormulaEnteral','tneFormulaParenteral','tneFormulaParenteral2','tneSegundaBolsaAtiva','admFormulaEnteral','admFormulaParenteral'].forEach(id=>document.getElementById(id).addEventListener('change', recalc));
 ['tneFormulaEnteral','tneFormulaParenteral','admFormulaEnteral','admFormulaParenteral'].forEach(id=>{
   document.getElementById(id).addEventListener('change', function(){
     if(!this.value.startsWith('outra_')) registrarUsoFormula(this.value);
@@ -2554,6 +2623,7 @@ function popularSelectFormulas(id, mapa, valorOutra){
 }
 popularSelectFormulas('tneFormulaEnteral', FORMULAS_ENTERAIS, 'outra_enteral');
 popularSelectFormulas('tneFormulaParenteral', FORMULAS_PARENTERAIS, 'outra_parenteral');
+popularSelectFormulas('tneFormulaParenteral2', FORMULAS_PARENTERAIS, 'outra_parenteral');
 popularSelectFormulas('admFormulaEnteral', FORMULAS_ENTERAIS, 'outra_enteral');
 popularSelectFormulas('admFormulaParenteral', FORMULAS_PARENTERAIS, 'outra_parenteral');
 
@@ -2671,8 +2741,8 @@ const SUPLEMENTOS_CATALOG = {
   'nutren_control': { nome: 'Nutren Control Baunilha', codigo: '1036755', tipo: 'bebida', ml: 200, proteina: 10, kcal: 200, HP: 0, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Diabetes ou hiperglicemia, com intolerância à lactose' },
   'nutren_senior': { nome: 'Nutren Senior Pronto para Beber', codigo: 'XX', tipo: 'bebida', ml: 200, proteina: 14, kcal: 250, HP: 1, HC: 0, NP: 0, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Idoso com sarcopenia ou baixo peso (cálcio, vitamina D e proteína)' },
   'nutri_renal': { nome: 'Nutri Renal Baunilha', codigo: '1027930', tipo: 'bebida', ml: 200, proteina: 8.3, kcal: 200, HP: 0, HC: 0, NP: 1, NC: 1, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Doença renal crônica em hemodiálise, com intolerância à lactose' },
-  'nutridrink_compact': { nome: 'Nutridrink Compact (Capuccino/Chocolate/Morango)', codigo: '725/16102/16107', tipo: 'bebida', ml: 125, proteina: 12, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Risco nutricional ou baixo peso, com pouca aceitação de volume' },
-  'nutridrink_compact_protein': { nome: 'Nutridrink Compact Protein', codigo: '21816', tipo: 'bebida', ml: 125, proteina: 18, kcal: 306, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Risco nutricional ou baixo peso, com necessidade proteica alta' },
+  'nutridrink_compact': { nome: 'Nutridrink Compact (Capuccino/Chocolate/Morango)', codigo: '725/16102/16107', tipo: 'bebida', ml: 125, proteina: 12, kcal: 300, HP: 0, HC: 1, NP: 1, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Risco nutricional ou baixo peso, com pouca aceitação de volume (hipercalórico, normoproteico)' },
+  'nutridrink_compact_protein': { nome: 'Nutridrink Compact Protein', codigo: '21816', tipo: 'bebida', ml: 125, proteina: 18, kcal: 306, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'contem', para: 'Risco nutricional ou baixo peso, com necessidade proteica alta' },
   'nutridrink_po_max': { nome: 'Nutridrink Pó Max (Protein)', codigo: 'XX', tipo: 'po', ml: 0, proteina: 15, kcal: 300, HP: 1, HC: 1, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'isento', para: 'Risco nutricional ou baixo peso — pó para acrescentar a preparações, sem lactose' },
   'whey_vitafor': { nome: 'Whey Protein Isolado Vitafor Sachê', codigo: 'XX', tipo: 'po', ml: 15, proteina: 14, kcal: 60, HP: 1, HC: 0, NP: 0, NC: 0, arginina: 0, zinco: 0, praline: 0, lactose: 'tracos', para: 'Necessidade proteica alta — pó para enriquecer refeições e preparações' }
 };
@@ -3614,9 +3684,21 @@ function gerarTexto(){
       const fParOutra = document.getElementById('tneFormulaParenteralOutra').value.trim();
       const nomeFormula = fParVal==='outra_parenteral' ? (fParOutra || '[completar]') : FORMULAS_PARENTERAIS[fParVal].nome;
       const tipoPar = fParVal==='outra_parenteral' ? '' : FORMULAS_PARENTERAIS[fParVal].tipo;
-      const descFormula = tipoPar ? `${nomeFormula} — ${tipoPar}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)` : `${nomeFormula}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)`;
 
-      txt += `Recebendo nutrição parenteral${fParVal!=='outra_parenteral'?` (${nomeFormula})`:(fParOutra?` (${fParOutra})`:'')}, via ${VIA_PARENTERAL_TXT[viaCodigoTne] || via}, em ${modoInfusao}, ${volumePrescrito} ml/dia à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína${comVO ? ', associada à via oral' : ''}.\n`;
+      /* Segunda bolsa associada (algumas condutas correm duas bolsas ao mesmo
+         tempo — ex.: central + periférica). Kcal/proteína continuam sendo o
+         TOTAL das duas, já que é isso que a EMTN informa. */
+      const temSegundaBolsa = document.getElementById('tneSegundaBolsaAtiva').checked;
+      let nomeSegundaBolsa = '';
+      if(temSegundaBolsa){
+        const fPar2Val = document.getElementById('tneFormulaParenteral2').value;
+        const fPar2Outra = document.getElementById('tneFormulaParenteral2Outra').value.trim();
+        nomeSegundaBolsa = fPar2Val==='outra_parenteral' ? (fPar2Outra || '[completar]') : (FORMULAS_PARENTERAIS[fPar2Val] ? FORMULAS_PARENTERAIS[fPar2Val].nome : '[completar]');
+      }
+      const nomesBolsas = temSegundaBolsa && nomeSegundaBolsa ? `${nomeFormula} e ${nomeSegundaBolsa}` : nomeFormula;
+      const descFormula = tipoPar ? `${nomesBolsas} — ${tipoPar}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)` : `${nomesBolsas}, ${kcalFormula} kcal, ${ptnFormula}g proteína (recebidos de acordo com o volume total prescrito)`;
+
+      txt += `Recebendo nutrição parenteral${fParVal!=='outra_parenteral'?` (${nomesBolsas})`:(fParOutra?` (${nomesBolsas})`:'')}, via ${VIA_PARENTERAL_TXT[viaCodigoTne] || via}, em ${modoInfusao}, ${volumePrescrito} ml/dia à ${taxaInfusao} ml/h, possuindo ${kcalFormula} Kcal e ${ptnFormula} g de proteína${comVO ? ', associada à via oral' : ''}.\n`;
       if(comVO){
         txt += `Dieta oral associada: ${V(dietaOralTxt)}${aceitacaoOral ? `, com aceitação alimentar ${aceitacaoOral.toLowerCase()}` : ''}.\n`;
       }
@@ -3913,6 +3995,75 @@ function abrirCatalogoCatalogo(){
 document.getElementById('catalogoSupBtn').addEventListener('click', abrirCatalogoCatalogo);
 document.getElementById('fecharCatalogo').addEventListener('click', ()=>{ document.getElementById('catalogoModal').style.display = 'none'; });
 
+/* ═══ SUPLEMENTOS NÃO PADRÃO DA CASA ═══
+   Referência para quando o suplemento habitual falta no estoque ou não serve
+   para o caso. NÃO entra em SUPLEMENTOS_CATALOG, não aparece nas sugestões
+   automáticas nem no seletor livre — evita repetir na nota clínica um número
+   que eu não consegui confirmar numa fonte brasileira específica.
+   Pedido explícito: sem itens da Nutricia (Fortimel, Renilon).
+   '—' = não confirmado nesta revisão; conferir sempre o rótulo do lote. */
+const SUPLEMENTOS_NAO_PADRAO = [
+  { nome:'Fresubin Protein Energy Drink', fabricante:'Fresenius', categoria:'Hiperproteico e hipercalórico', apres:'200ml', kcal:300, proteina:20, lactose:'verificar', obs:'Fontes divergem sobre lactose — confirmar no rótulo. Necessidade proteica/calórica aumentada, cicatrização.' },
+  { nome:'Ensure Plus Advance', fabricante:'Abbott', categoria:'Hiperproteico e hipercalórico (c/ HMB)', apres:'220ml', kcal:330, proteina:20, lactose:'contem', obs:'Sarcopenia, perda de massa muscular. Contém HMB e vitamina D em dose alta.' },
+  { nome:'Ensure Plus', fabricante:'Abbott', categoria:'Hipercalórico', apres:'200ml', kcal:300, proteina:null, lactose:'contem', obs:'Desnutrição geral, baixo peso.' },
+  { nome:'Ensure Protein', fabricante:'Abbott', categoria:'Hiperproteico', apres:'220ml', kcal:275, proteina:null, lactose:'isento', obs:'Única opção sem lactose da linha Ensure.' },
+  { nome:'Ensure Max Protein', fabricante:'Abbott', categoria:'Hiperproteico', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Reforço proteico — números não confirmados nesta revisão.' },
+  { nome:'Nepro', fabricante:'Abbott', categoria:'Renal em hemodiálise, hipercalórico', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Potássio e fósforo controlados — números não confirmados nesta revisão.' },
+  { nome:'Suplena', fabricante:'Abbott', categoria:'Renal conservador', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Proteína controlada — números não confirmados nesta revisão.' },
+  { nome:'ProSure', fabricante:'Abbott', categoria:'Oncologia (enriquecido com EPA)', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Suporte oncológico, caquexia — números não confirmados nesta revisão.' },
+  { nome:'Glucerna Shake', fabricante:'Abbott', categoria:'Diabetes / hiperglicemia', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Linha diferente do Glucerna SR já cadastrado no catálogo padrão.' },
+  { nome:'Meritene Clinical Protein', fabricante:'Nestlé', categoria:'Hiperproteico e hipercalórico', apres:'200ml', kcal:null, proteina:null, lactose:'isento', obs:'Idoso, sarcopenia. Kcal/proteína não confirmados para a versão BR nesta revisão.' },
+  { nome:'Trophic (linha)', fabricante:'Prodiet', categoria:'Hiperproteico/hipercalórico — várias versões', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Linha com múltiplas variantes — conferir a versão específica do rótulo.' },
+  { nome:'Novasource Proline', fabricante:'Nestlé', categoria:'Cicatrização (prolina, arginina, zinco, selênio)', apres:'200ml', kcal:null, proteina:20, lactose:'verificar', obs:'Fontes divergem sobre lactose (isento/baixo teor/contém) — confirmar no rótulo.' },
+  { nome:'Nutren 1.5', fabricante:'Nestlé', categoria:'Hipercalórico', apres:'200ml', kcal:300, proteina:11.2, lactose:'isento', obs:'Uso geral, baixo volume.' },
+  { nome:'Nutren 2.0', fabricante:'Nestlé', categoria:'Hipercalórico, cicatrização', apres:'200ml', kcal:400, proteina:17.2, lactose:'isento', obs:'Perfil voltado para cicatrização.' },
+  { nome:'Nutren Ultra', fabricante:'Nestlé', categoria:'Muito concentrado (alto kcal e proteína)', apres:'200ml', kcal:446, proteina:32, lactose:'baixo_teor', obs:'Baixo teor de lactose (não é isento). Indicado quando o volume precisa ser mínimo.' },
+  { nome:'Nutren Protein / Just Protein', fabricante:'Nestlé', categoria:'Módulo proteico em pó', apres:'pó, ~7g/colher', kcal:26, proteina:14, lactose:'verificar', obs:'Por porção de ~7g. Contém cafeína (~80mg por porção) — atenção em cardiopatas e à noite.' },
+  { nome:'Nutren Fresh', fabricante:'Nestlé', categoria:'Bebida "suco", sem leite', apres:'200ml', kcal:null, proteina:null, lactose:'isento', obs:'Alternativa para quem rejeita o sabor de shake lácteo (como o Fresubin Jucy).' },
+  { nome:'Resource 2.0', fabricante:'Nestlé', categoria:'Hipercalórico, hiperproteico', apres:'200ml', kcal:null, proteina:null, lactose:'verificar', obs:'Dados de fonte não brasileira — confirmar antes de usar.' },
+  { nome:'Resource Protein', fabricante:'Nestlé', categoria:'Hiperproteico', apres:'200ml', kcal:250, proteina:18.8, lactose:'isento', obs:'Números de fonte portuguesa — conferir se a versão BR é idêntica.' },
+  { nome:'Resource Diabet', fabricante:'Nestlé', categoria:'Diabetes', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Números não confirmados nesta revisão.' },
+  { nome:'Resource Support', fabricante:'Nestlé', categoria:'Imunonutrição', apres:'—', kcal:null, proteina:null, lactose:'verificar', obs:'Pré/pós-operatório — números não confirmados nesta revisão.' },
+];
+
+function abrirCatalogoNaoPadrao(){
+  const tabela = document.getElementById('tabelaNaoPadrao');
+  tabela.innerHTML = '';
+  const LS_TXT = { contem: ['Contém','var(--danger-soft)','var(--danger)'], isento: ['Isento','var(--accent-soft)','var(--ok)'], baixo_teor: ['Baixo teor','var(--warn-bg)','#8a6d1a'], verificar: ['Conferir','var(--card-2)','var(--muted)'] };
+  const lista = SUPLEMENTOS_NAO_PADRAO.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  lista.forEach((sup, idx) => {
+    const lac = LS_TXT[sup.lactose] || LS_TXT.verificar;
+    const tr = document.createElement('tr');
+    tr.style.backgroundColor = idx % 2 === 0 ? 'var(--card-2)' : 'var(--card)';
+    tr.innerHTML = `
+      <td style="border:1px solid var(--border); padding:8px; font-weight:700; color:var(--text); font-size:12px;">${sup.nome}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center; font-size:11px; color:var(--muted);">${sup.fabricante}</td>
+      <td style="border:1px solid var(--border); padding:8px; font-size:11px; color:var(--muted);">${sup.categoria}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center; font-size:11px; color:var(--muted);">${sup.apres}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center; font-size:11.5px;">${sup.kcal!=null ? sup.kcal : '—'}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center; font-size:11.5px;">${sup.proteina!=null ? String(sup.proteina).replace('.',',')+' g' : '—'}</td>
+      <td style="border:1px solid var(--border); padding:8px; text-align:center;"><span style="background:${lac[1]}; color:${lac[2]}; padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:700;">${lac[0]}</span></td>
+      <td style="border:1px solid var(--border); padding:8px; font-size:11px; color:var(--muted);">${sup.obs}</td>
+    `;
+    tabela.appendChild(tr);
+  });
+  document.getElementById('catalogoNaoPadraoModal').style.display = 'block';
+}
+document.getElementById('catalogoNaoPadraoBtn').addEventListener('click', abrirCatalogoNaoPadrao);
+document.getElementById('fecharNaoPadrao').addEventListener('click', ()=>{ document.getElementById('catalogoNaoPadraoModal').style.display = 'none'; });
+document.getElementById('catalogoNaoPadraoModal').addEventListener('click', (e)=>{ if(e.target.id === 'catalogoNaoPadraoModal') document.getElementById('catalogoNaoPadraoModal').style.display = 'none'; });
+document.getElementById('imprimirNaoPadrao').addEventListener('click', ()=>{
+  const w = window.open('', '_blank');
+  w.document.write(`<html><head><title>Suplementos não padrão — Copa Star</title><style>
+    body{font-family:Arial,sans-serif; padding:20px;} table{width:100%; border-collapse:collapse; font-size:11px;}
+    th,td{border:1px solid #999; padding:6px;} th{background:#f2e3b3;}
+    </style></head><body><h2>Suplementos não padrão da casa — Copa Star</h2>
+    <p style="font-size:11px;">Não fazem parte do estoque padrão. Confira sempre o rótulo do lote antes de indicar.</p>
+    ${document.querySelector('#catalogoNaoPadraoModal table').outerHTML}</body></html>`);
+  w.document.close(); w.focus();
+  setTimeout(()=>{ w.print(); }, 300);
+});
+
 /* Imprimir catálogo: abre janela limpa só com a tabela (paisagem, cores fixas para papel) */
 document.getElementById('imprimirCatalogo').addEventListener('click', ()=>{
   const LS_TXT = { contem: 'Contém', isento: 'Isento', tracos: 'Traços', verificar: 'Verificar' };
@@ -4176,6 +4327,8 @@ function resetTudo(){
   document.getElementById('tneModoInfusao').selectedIndex = 0;
   document.getElementById('tneFormulaEnteral').selectedIndex = 0;
   document.getElementById('tneFormulaParenteral').selectedIndex = 0;
+  document.getElementById('tneFormulaParenteral2').selectedIndex = 0;
+  document.getElementById('tneSegundaBolsaAtiva').checked = false;
   document.getElementById('admFormulaEnteral').selectedIndex = 0;
   document.getElementById('admFormulaParenteral').selectedIndex = 0;
   document.getElementById('tneDietaOral').value = 'branda';
