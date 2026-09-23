@@ -2084,7 +2084,7 @@ function atualizarVisibilidadePorTipo(){
   const isConduta = tipo === 'conduta';
 
   document.getElementById('secaoTriagemAdmissao').style.display = isAdmissao ? '' : 'none';
-  document.getElementById('secaoRestricoesAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
+  document.getElementById('secaoRestricoesAdmissao').style.display = (isAdmissao || isEvolucaoDieta || tipo === 'revisita') ? '' : 'none';
   document.getElementById('secaoAlergiasAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoComorbidadesAdmissao').style.display = (isAdmissao || isEvolucaoDieta) ? '' : 'none';
   document.getElementById('secaoHoraLiberacao').style.display = isEvolucaoDieta ? '' : 'none';
@@ -2102,7 +2102,7 @@ function atualizarVisibilidadePorTipo(){
   document.getElementById('secaoTNE').style.display = precisaTNE ? '' : 'none';
   document.getElementById('secaoTneVOCampos').style.display = (isTNE && segVal('segTneVO')==='sim') ? '' : 'none';
   document.getElementById('secaoTneDesmameCampos').style.display = (isTNE && segVal('segTneDesmame')==='sim') ? '' : 'none';
-  document.getElementById('secaoDietaPrincipal').style.display = (isTNE || tipo === 'revisita') ? 'none' : '';
+  document.getElementById('secaoDietaPrincipal').style.display = isTNE ? 'none' : '';
   document.getElementById('secaoPerfilCalorico').style.display = (isTNE || isEvolucaoDieta || tipo === 'revisita') ? 'none' : '';
   document.getElementById('secaoNivelAssistencia').style.display = tipo === 'revisita' ? 'none' : '';
   document.getElementById('secaoTempoInternacao').style.display = (isTNE || isEvolucaoDieta) ? 'none' : '';
